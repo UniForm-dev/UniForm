@@ -1,0 +1,20 @@
+{
+  "name": "uniform-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "pnpm --filter @uniform/playground dev",
+    "build": "pnpm --filter @uniform/core build",
+    "test": "pnpm --filter @uniform/core test",
+    "lint": "pnpm -r lint"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}
