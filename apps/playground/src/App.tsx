@@ -1,4 +1,4 @@
-import * as z from 'zod'
+import * as z from 'zod/v4'
 import { AutoForm } from '@uniform/core'
 
 // ---------------------------------------------------------------------------
@@ -6,8 +6,8 @@ import { AutoForm } from '@uniform/core'
 // ---------------------------------------------------------------------------
 
 const contactSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  email: z.string().email('Invalid email'),
+  name: z.string().min(1, 'Name is required').meta({ placeholder: 'Name...' }),
+  email: z.email('Invalid email'),
   age: z.number().min(0).max(150).optional(),
   role: z.enum(['user', 'admin', 'editor']),
   subscribe: z.boolean(),

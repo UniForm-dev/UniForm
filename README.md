@@ -26,14 +26,14 @@ The core library. Phase 2 ships the full rendering engine on top of Phase 1's in
 
 - Walks a Zod schema and produces a normalized `FieldConfig` tree
 - Handles `ZodString`, `ZodNumber`, `ZodBoolean`, `ZodDate`, `ZodEnum`, `ZodNativeEnum`, `ZodObject`, `ZodArray`, `ZodUnion`, `ZodDiscriminatedUnion`
-- Transparently unwraps `ZodOptional`, `ZodNullable`, `ZodDefault`, `ZodEffects`
-- Extracts `.meta()` metadata (Zod V4)
+- Transparently unwraps `ZodOptional`, `ZodNullable`, `ZodDefault`, `ZodPipe` (`.transform()`)
+- Extracts `.meta()` metadata via `z.globalRegistry`
 - Derives human-readable labels from camelCase / snake_case field names
 - Never throws — unsupported types fall back to `type: 'unknown'`
 
 **Rendering engine**
 
-- `<AutoForm>` — top-level component; introspects the schema, sets up `react-hook-form` with `zodResolver`, and renders the form
+- `<AutoForm>` — top-level component; introspects the schema, sets up `react-hook-form` with `zodResolver` from `@hookform/resolvers/zod` (v5+), and renders the form
 - `FieldRenderer` — recursive switch that dispatches to the correct field component; implements the 4-tier component lookup chain (`meta.component` → field type in custom registry → field type in default registry → `null` + warning)
 - `ScalarField` — handles `string`, `number`, and `date` with automatic coercion (strings → `parseFloat` / `new Date`)
 - `BooleanField` — checkbox via RHF `Controller`
@@ -80,4 +80,5 @@ pnpm dev          # start playground
 - **Vite** — playground dev server
 - **Vitest** — unit tests
 - **TypeScript** — strict mode throughout
-- **Zod V4** (`^3.25`) — peer dependency
+- **Zod V4** (`zod@>=3.25`, imported from `zod/v4`) — peer dependency
+- **`@hookform/resolvers`** (`^5.2`) — Zod v4-aware resolver
