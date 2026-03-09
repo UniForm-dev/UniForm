@@ -113,7 +113,11 @@ export function FieldRenderer({
   if (rendered === null) return null
 
   return (
-    <FieldWrapper field={effectiveField} error={error}>
+    <FieldWrapper
+      field={effectiveField}
+      error={error}
+      span={field.meta.span}
+    >
       {rendered}
     </FieldWrapper>
   )

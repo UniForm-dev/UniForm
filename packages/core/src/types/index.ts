@@ -109,6 +109,7 @@ export type FieldWrapperProps = {
   children: React.ReactNode
   field: FieldConfig
   error?: string
+  span?: number
 }
 
 // ---------------------------------------------------------------------------
