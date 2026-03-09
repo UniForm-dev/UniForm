@@ -13,17 +13,14 @@ import { FieldRenderer } from './FieldRenderer'
 import { useConditionalFields } from '../hooks/useConditionalFields'
 import { useSectionGrouping } from '../hooks/useSectionGrouping'
 
-function DefaultFormWrapper({ children }: { children: React.ReactNode }) {
+type WithChildren = { children: React.ReactNode }
+type WithChildrenAndTitle = WithChildren & { title: string }
+
+function DefaultFormWrapper({ children }: WithChildren) {
   return <>{children}</>
 }
 
-function DefaultSectionWrapper({
-  children,
-  title,
-}: {
-  children: React.ReactNode
-  title: string
-}) {
+function DefaultSectionWrapper({ children, title }: WithChildrenAndTitle) {
   return (
     <fieldset>
       <legend>{title}</legend>
