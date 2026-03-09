@@ -1,19 +1,39 @@
+import type * as React from 'react'
 import type { FieldWrapperProps } from '../../types'
+import { useAutoFormContext } from '../../context/AutoFormContext'
 
 export function DefaultFieldWrapper({
   children,
   field,
   error,
+  span,
 }: FieldWrapperProps) {
+  const { classNames } = useAutoFormContext()
+
   return (
-    <div>
-      <label htmlFor={field.name}>
+    <div
+      className={classNames.fieldWrapper}
+      style={
+        span
+          ? ({ '--field-span': span } as React.CSSProperties)
+          : undefined
+      }
+    >
+      <label htmlFor={field.name} className={classNames.label}>
         {field.label}
         {field.required && ' *'}
       </label>
       {children}
-      {field.meta.description && <p>{String(field.meta.description)}</p>}
-      {error && <span role='alert'>{error}</span>}
+      {field.meta.description && (
+        <p className={classNames.description}>
+          {String(field.meta.description)}
+        </p>
+      )}
+      {error && (
+        <span role='alert' className={classNames.error}>
+          {error}
+        </span>
+      )}
     </div>
   )
 }

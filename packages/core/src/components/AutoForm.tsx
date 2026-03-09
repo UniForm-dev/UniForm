@@ -11,6 +11,7 @@ import { DefaultSubmitButton } from './defaults/DefaultSubmitButton'
 import { AutoFormContextProvider } from '../context/AutoFormContext'
 import { FieldRenderer } from './FieldRenderer'
 import { useConditionalFields } from '../hooks/useConditionalFields'
+import { useSectionGrouping } from '../hooks/useSectionGrouping'
 
 function DefaultFormWrapper({ children }: { children: React.ReactNode }) {
   return <>{children}</>
@@ -18,11 +19,17 @@ function DefaultFormWrapper({ children }: { children: React.ReactNode }) {
 
 function DefaultSectionWrapper({
   children,
+  title,
 }: {
   children: React.ReactNode
   title: string
 }) {
-  return <div>{children}</div>
+  return (
+    <fieldset>
+      <legend>{title}</legend>
+      {children}
+    </fieldset>
+  )
 }
 
 function applyFieldOverrides(
@@ -108,6 +115,7 @@ export function AutoForm<TSchema extends z.ZodObject<z.ZodRawShape>>({
   })
 
   const visibleFields = useConditionalFields(mergedFields, control)
+  const sections = useSectionGrouping(visibleFields)
 
   const resolvedLayout = {
     formWrapper: layout?.formWrapper ?? DefaultFormWrapper,
@@ -118,6 +126,7 @@ export function AutoForm<TSchema extends z.ZodObject<z.ZodRawShape>>({
   const resolvedFieldWrapper = fieldWrapper ?? DefaultFieldWrapper
 
   const FormWrapper = resolvedLayout.formWrapper
+  const SectionWrapper = resolvedLayout.sectionWrapper
   const SubmitButton = resolvedLayout.submitButton
 
   return (
@@ -133,14 +142,31 @@ export function AutoForm<TSchema extends z.ZodObject<z.ZodRawShape>>({
     >
       <form
         noValidate
+        className={classNames.form}
         onSubmit={(e) => {
           void handleSubmit((values) => onSubmit(values as z.infer<TSchema>))(e)
         }}
       >
         <FormWrapper>
-          {visibleFields.map((field) => (
-            <FieldRenderer key={field.name} field={field} control={control} />
-          ))}
+          {sections.map((section) => {
+            const renderedFields = section.fields.map((field) => (
+              <FieldRenderer key={field.name} field={field} control={control} />
+            ))
+
+            if (section.title === null) {
+              return (
+                <React.Fragment key='__ungrouped'>
+                  {renderedFields}
+                </React.Fragment>
+              )
+            }
+
+            return (
+              <SectionWrapper key={section.title} title={section.title}>
+                {renderedFields}
+              </SectionWrapper>
+            )
+          })}
           <SubmitButton isSubmitting={formState.isSubmitting} />
         </FormWrapper>
       </form>

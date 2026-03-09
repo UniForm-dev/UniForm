@@ -36,6 +36,8 @@ export { mergeRegistries } from './registry/mergeRegistries'
 
 // Hooks
 export { useConditionalFields } from './hooks/useConditionalFields'
+export { useSectionGrouping } from './hooks/useSectionGrouping'
+export type { SectionGroup } from './hooks/useSectionGrouping'
 
 // Context
 export { useAutoFormContext } from './context/AutoFormContext'

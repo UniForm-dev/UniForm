@@ -326,4 +326,405 @@ describe('AutoForm', () => {
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('unknown'))
     warnSpy.mockRestore()
   })
+
+  // ==========================================================================
+  // Phase 3 — Layout & Styling Hooks
+  // ==========================================================================
+
+  // ---------------------------------------------------------------------------
+  // 17. classNames.form applies to the form element
+  // ---------------------------------------------------------------------------
+
+  it('17. classNames.form applies to the form element', () => {
+    const schema = z.object({ name: z.string() })
+    const { container } = render(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        classNames={{ form: 'my-form' }}
+      />,
+    )
+    const form = container.querySelector('form')
+    expect(form).toHaveClass('my-form')
+  })
+
+  // ---------------------------------------------------------------------------
+  // 18. classNames.fieldWrapper applies to the field wrapper div
+  // ---------------------------------------------------------------------------
+
+  it('18. classNames.fieldWrapper applies to the field wrapper div', () => {
+    const schema = z.object({ name: z.string(), age: z.number() })
+    render(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        classNames={{ fieldWrapper: 'field-wrap' }}
+      />,
+    )
+    const wrappers = document.querySelectorAll('.field-wrap')
+    expect(wrappers).toHaveLength(2)
+  })
+
+  // ---------------------------------------------------------------------------
+  // 19. classNames.label applies to labels
+  // ---------------------------------------------------------------------------
+
+  it('19. classNames.label applies to labels', () => {
+    const schema = z.object({ name: z.string() })
+    render(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        classNames={{ label: 'my-label' }}
+      />,
+    )
+    const labels = document.querySelectorAll('.my-label')
+    expect(labels).toHaveLength(1)
+    expect(labels[0].tagName).toBe('LABEL')
+  })
+
+  // ---------------------------------------------------------------------------
+  // 20. classNames.error applies to error messages
+  // ---------------------------------------------------------------------------
+
+  it('20. classNames.error applies to error messages', async () => {
+    const schema = z.object({ name: z.string().min(1, 'Required') })
+    const { user } = setup(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        classNames={{ error: 'err-class' }}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: /submit/i }))
+    await waitFor(() => {
+      const alert = screen.getByRole('alert')
+      expect(alert).toHaveClass('err-class')
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // 21. classNames.description applies to description text
+  // ---------------------------------------------------------------------------
+
+  it('21. classNames.description applies to description text', () => {
+    const schema = z.object({ name: z.string() })
+    render(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        classNames={{ description: 'desc-class' }}
+        fields={{ name: { description: 'Enter your name' } }}
+      />,
+    )
+    const desc = document.querySelector('.desc-class')
+    expect(desc).toBeInTheDocument()
+    expect(desc!.textContent).toBe('Enter your name')
+  })
+
+  // ---------------------------------------------------------------------------
+  // 22. Section grouping renders fields in section wrappers
+  // ---------------------------------------------------------------------------
+
+  it('22. section grouping renders fields in section wrappers', () => {
+    const schema = z.object({
+      firstName: z.string(),
+      lastName: z.string(),
+      street: z.string(),
+      city: z.string(),
+    })
+    render(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        fields={{
+          firstName: { section: 'Personal' },
+          lastName: { section: 'Personal' },
+          street: { section: 'Address' },
+          city: { section: 'Address' },
+        }}
+      />,
+    )
+    const fieldsets = document.querySelectorAll('fieldset')
+    expect(fieldsets).toHaveLength(2)
+    const legends = document.querySelectorAll('legend')
+    expect(legends[0].textContent).toBe('Personal')
+    expect(legends[1].textContent).toBe('Address')
+    // firstName and lastName in first fieldset, street and city in second
+    expect(
+      within(fieldsets[0]).getByLabelText(/first name/i),
+    ).toBeInTheDocument()
+    expect(
+      within(fieldsets[0]).getByLabelText(/last name/i),
+    ).toBeInTheDocument()
+    expect(within(fieldsets[1]).getByLabelText(/street/i)).toBeInTheDocument()
+    expect(within(fieldsets[1]).getByLabelText(/city/i)).toBeInTheDocument()
+  })
+
+  // ---------------------------------------------------------------------------
+  // 23. Ungrouped fields render without a section wrapper
+  // ---------------------------------------------------------------------------
+
+  it('23. ungrouped fields render without a section wrapper', () => {
+    const schema = z.object({
+      username: z.string(),
+      street: z.string(),
+    })
+    render(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        fields={{
+          street: { section: 'Address' },
+        }}
+      />,
+    )
+    // Only one fieldset (for Address section)
+    const fieldsets = document.querySelectorAll('fieldset')
+    expect(fieldsets).toHaveLength(1)
+    expect(fieldsets[0].querySelector('legend')!.textContent).toBe('Address')
+    // username is rendered but NOT inside a fieldset
+    const usernameInput = screen.getByLabelText(/username/i)
+    expect(usernameInput.closest('fieldset')).toBeNull()
+  })
+
+  // ---------------------------------------------------------------------------
+  // 24. Custom sectionWrapper receives the correct title prop
+  // ---------------------------------------------------------------------------
+
+  it('24. custom sectionWrapper receives the correct title prop', () => {
+    const schema = z.object({
+      name: z.string(),
+      street: z.string(),
+    })
+    const CustomSection = ({
+      children,
+      title,
+    }: {
+      children: React.ReactNode
+      title: string
+    }) => <div data-testid={`section-${title}`}>{children}</div>
+
+    render(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        fields={{
+          name: { section: 'Info' },
+          street: { section: 'Location' },
+        }}
+        layout={{ sectionWrapper: CustomSection }}
+      />,
+    )
+    expect(screen.getByTestId('section-Info')).toBeInTheDocument()
+    expect(screen.getByTestId('section-Location')).toBeInTheDocument()
+  })
+
+  // ---------------------------------------------------------------------------
+  // 25. Custom formWrapper wraps the form content
+  // ---------------------------------------------------------------------------
+
+  it('25. custom formWrapper wraps the form content', () => {
+    const schema = z.object({ name: z.string() })
+    const CustomFormWrapper = ({
+      children,
+    }: {
+      children: React.ReactNode
+    }) => <div data-testid='form-wrapper'>{children}</div>
+
+    render(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        layout={{ formWrapper: CustomFormWrapper }}
+      />,
+    )
+    const wrapper = screen.getByTestId('form-wrapper')
+    expect(wrapper).toBeInTheDocument()
+    // Fields and submit button are inside it
+    expect(within(wrapper).getByLabelText(/name/i)).toBeInTheDocument()
+    expect(
+      within(wrapper).getByRole('button', { name: /submit/i }),
+    ).toBeInTheDocument()
+  })
+
+  // ---------------------------------------------------------------------------
+  // 26. Custom submitButton replaces the default
+  // ---------------------------------------------------------------------------
+
+  it('26. custom submitButton replaces the default', () => {
+    const schema = z.object({ name: z.string() })
+    const CustomSubmit = ({ isSubmitting }: { isSubmitting: boolean }) => (
+      <button type='submit' disabled={isSubmitting}>
+        Go
+      </button>
+    )
+
+    render(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        layout={{ submitButton: CustomSubmit }}
+      />,
+    )
+    expect(screen.getByRole('button', { name: 'Go' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /submit/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  // ---------------------------------------------------------------------------
+  // 27. Custom fieldWrapper replaces the default wrapper
+  // ---------------------------------------------------------------------------
+
+  it('27. custom fieldWrapper replaces the default wrapper', () => {
+    const schema = z.object({ name: z.string() })
+    const CustomWrapper = ({
+      children,
+    }: {
+      children: React.ReactNode
+      field: unknown
+      error?: string
+    }) => <section data-testid='custom-wrapper'>{children}</section>
+
+    render(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        fieldWrapper={CustomWrapper}
+      />,
+    )
+    expect(screen.getByTestId('custom-wrapper')).toBeInTheDocument()
+  })
+
+  // ---------------------------------------------------------------------------
+  // 28. Custom fieldWrapper does not wrap object/array fields
+  // ---------------------------------------------------------------------------
+
+  it('28. custom fieldWrapper does not wrap object/array fields', () => {
+    const schema = z.object({
+      name: z.string(),
+      address: z.object({ street: z.string() }),
+      tags: z.array(z.object({ value: z.string() })),
+    })
+    const CustomWrapper = ({
+      children,
+    }: {
+      children: React.ReactNode
+      field: unknown
+      error?: string
+    }) => <section data-testid='custom-wrapper'>{children}</section>
+
+    render(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        fieldWrapper={CustomWrapper}
+      />,
+    )
+    // custom-wrapper should appear for: name, address.street (nested scalar)
+    // but NOT for address (object) or tags (array)
+    const wrappers = screen.getAllByTestId('custom-wrapper')
+    // name + address.street = 2 scalar fields wrapped
+    expect(wrappers).toHaveLength(2)
+  })
+
+  // ---------------------------------------------------------------------------
+  // 29. span meta value is available as a CSS custom property
+  // ---------------------------------------------------------------------------
+
+  it('29. span meta value is available as a CSS custom property', () => {
+    const schema = z.object({ name: z.string() })
+    render(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        fields={{ name: { span: 6 } }}
+      />,
+    )
+    const input = screen.getByLabelText(/name/i)
+    const wrapper = input.closest('div')!
+    expect(wrapper.style.getPropertyValue('--field-span')).toBe('6')
+  })
+
+  // ---------------------------------------------------------------------------
+  // 30. Fields without span have no inline style on the wrapper
+  // ---------------------------------------------------------------------------
+
+  it('30. fields without span have no inline style on the wrapper', () => {
+    const schema = z.object({ name: z.string() })
+    render(<AutoForm schema={schema} onSubmit={vi.fn()} />)
+    const input = screen.getByLabelText(/name/i)
+    const wrapper = input.closest('div')!
+    expect(wrapper.getAttribute('style')).toBeNull()
+  })
+
+  // ---------------------------------------------------------------------------
+  // 31. Section ordering follows field order
+  // ---------------------------------------------------------------------------
+
+  it('31. section ordering follows field order', () => {
+    const schema = z.object({
+      city: z.string(),
+      firstName: z.string(),
+      street: z.string(),
+      lastName: z.string(),
+    })
+    render(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        fields={{
+          firstName: { section: 'Personal', order: 1 },
+          lastName: { section: 'Personal', order: 3 },
+          street: { section: 'Address', order: 2 },
+          city: { section: 'Address', order: 4 },
+        }}
+      />,
+    )
+    // After ordering: firstName(1), street(2), lastName(3), city(4)
+    // Personal section first field appears at order 1, Address at order 2
+    // So sections should be: Personal, Address
+    const legends = document.querySelectorAll('legend')
+    expect(legends[0].textContent).toBe('Personal')
+    expect(legends[1].textContent).toBe('Address')
+
+    // Within Personal: firstName(1), lastName(3)
+    const fieldsets = document.querySelectorAll('fieldset')
+    const personalInputs = within(fieldsets[0]).getAllByRole('textbox')
+    expect(personalInputs[0]).toHaveAttribute('name', 'firstName')
+    expect(personalInputs[1]).toHaveAttribute('name', 'lastName')
+
+    // Within Address: street(2), city(4)
+    const addressInputs = within(fieldsets[1]).getAllByRole('textbox')
+    expect(addressInputs[0]).toHaveAttribute('name', 'street')
+    expect(addressInputs[1]).toHaveAttribute('name', 'city')
+  })
+
+  // ---------------------------------------------------------------------------
+  // 32. Empty sections are not rendered
+  // ---------------------------------------------------------------------------
+
+  it('32. empty sections are not rendered', () => {
+    const schema = z.object({
+      name: z.string(),
+      secret: z.string(),
+      hiddenToo: z.string(),
+    })
+    render(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        fields={{
+          name: { section: 'Visible' },
+          secret: { section: 'Hidden', hidden: true },
+          hiddenToo: { section: 'Hidden', hidden: true },
+        }}
+      />,
+    )
+    const legends = document.querySelectorAll('legend')
+    // Only the 'Visible' section should be rendered
+    expect(legends).toHaveLength(1)
+    expect(legends[0].textContent).toBe('Visible')
+  })
 })
