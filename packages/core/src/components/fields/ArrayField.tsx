@@ -38,7 +38,7 @@ function getRowSummary(
         val != null &&
         val !== ''
       ) {
-        return String(val)
+        return String(val as string | number)
       }
     }
   }
@@ -46,7 +46,7 @@ function getRowSummary(
 }
 
 export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
-  const { classNames, layout } = useAutoFormContext()
+  const { classNames, layout, labels } = useAutoFormContext()
   const {
     fields: rows,
     append,
@@ -111,7 +111,9 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
                 : `Collapse item ${index + 1}`
             }
           >
-            {isCollapsed ? '▶' : '▼'}{' '}
+            {isCollapsed
+              ? (labels.arrayExpand ?? '▼')
+              : (labels.arrayCollapse ?? '▶')}{' '}
             <CollapseSummary
               control={control}
               effectiveName={effectiveName}
@@ -131,7 +133,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
               disabled={index === 0}
               aria-label={`Move item ${index + 1} up`}
             >
-              ↑
+              {labels.arrayMoveUp ?? '↑'}
             </button>
           ) : null
 
@@ -144,7 +146,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
               disabled={index === rows.length - 1}
               aria-label={`Move item ${index + 1} down`}
             >
-              ↓
+              {labels.arrayMoveDown ?? '↓'}
             </button>
           ) : null
 
@@ -161,7 +163,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
               }}
               aria-label={`Duplicate item ${index + 1}`}
             >
-              Duplicate
+              {labels.arrayDuplicate ?? 'Duplicate'}
             </button>
           ) : null
 
@@ -173,7 +175,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
             disabled={atMin}
             aria-label={`Remove item ${index + 1}`}
           >
-            Remove
+            {labels.arrayRemove ?? 'Remove'}
           </button>
         )
 
@@ -212,7 +214,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
           append(getDefaultValue(itemConfig) as Record<string, unknown>)
         }
       >
-        Add
+        {labels.arrayAdd ?? 'Add'}
       </button>
     </>
   )

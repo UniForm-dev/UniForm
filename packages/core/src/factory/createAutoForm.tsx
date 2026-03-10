@@ -1,6 +1,11 @@
 import * as React from 'react'
 import type * as z from 'zod/v4'
-import type { AutoFormConfig, AutoFormProps, AutoFormHandle } from '../types'
+import type {
+  AutoFormConfig,
+  AutoFormProps,
+  AutoFormHandle,
+  FormLabels,
+} from '../types'
 import { AutoForm } from '../components/AutoForm'
 import { mergeRegistries } from '../registry/mergeRegistries'
 
@@ -65,6 +70,14 @@ export function createAutoForm(config: AutoFormConfig) {
       [props.messages],
     )
 
+    const mergedLabels = React.useMemo<FormLabels | undefined>(
+      () =>
+        props.labels || config.labels
+          ? { ...config.labels, ...props.labels }
+          : undefined,
+      [props.labels],
+    )
+
     return (
       <AutoForm
         {...props}
@@ -76,6 +89,7 @@ export function createAutoForm(config: AutoFormConfig) {
         disabled={props.disabled || config.disabled || false}
         coercions={mergedCoercions}
         messages={mergedMessages}
+        labels={mergedLabels ?? {}}
       />
     )
   }

@@ -2,22 +2,23 @@ import * as React from 'react'
 import type {
   CoercionMap,
   ComponentRegistry,
-  FieldMeta,
   FieldWrapperProps,
   ResolvedLayoutSlots,
   FormClassNames,
   ValidationMessages,
+  FormLabels,
 } from '../types'
 
 export type AutoFormContextValue = {
   registry: ComponentRegistry
-  fieldOverrides: Record<string, Partial<FieldMeta>>
+  fieldOverrides: Record<string, unknown>
   fieldWrapper: React.ComponentType<FieldWrapperProps>
   layout: ResolvedLayoutSlots
   classNames: FormClassNames
   disabled: boolean
   coercions?: CoercionMap
   messages?: ValidationMessages
+  labels: FormLabels
 }
 
 const AutoFormContext = React.createContext<AutoFormContextValue | null>(null)
