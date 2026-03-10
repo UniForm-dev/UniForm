@@ -1366,7 +1366,7 @@ describe('AutoForm', () => {
         data-testid={`factory-${props.name}`}
         id={props.name}
         name={props.name}
-        value={String(props.value ?? '')}
+        value={String((props.value ?? '') as string | number | boolean)}
         onChange={(e) => props.onChange(e.target.value)}
         onBlur={props.onBlur}
         aria-label={props.label}
@@ -2531,7 +2531,7 @@ describe('AutoForm', () => {
       <input
         data-testid='rich-input'
         name={props.name}
-        value={String(props.value ?? '')}
+        value={String((props.value ?? '') as string | number | boolean)}
         onChange={(e) => props.onChange(e.target.value)}
         onBlur={props.onBlur}
       />
@@ -2600,5 +2600,212 @@ describe('AutoForm', () => {
     )
     expect(screen.getByTestId('direct-comp')).toBeInTheDocument()
     expect(screen.queryByTestId('registry-comp')).not.toBeInTheDocument()
+  })
+
+  // ---------------------------------------------------------------------------
+  // 108. fields.depend callback is called with the actual form values
+  // ---------------------------------------------------------------------------
+
+  it('108. fields.depend callback is called and produces the correct override', async () => {
+    const schema = z.object({
+      role: z.enum(['admin', 'user']),
+      permissions: z.string().optional(),
+    })
+    const { user } = setup(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        fields={{
+          permissions: {
+            depend: (values) => ({
+              hidden: values.role !== 'admin',
+            }),
+          },
+        }}
+      />,
+    )
+
+    // Default first enum value is 'admin' — permissions should be visible
+    expect(screen.getByLabelText(/permissions/i)).toBeInTheDocument()
+
+    // Switch role to 'user' — permissions should be hidden
+    await user.selectOptions(screen.getByRole('combobox'), 'user')
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/permissions/i)).not.toBeInTheDocument()
+    })
+
+    // Switch back to 'admin' — permissions should reappear
+    await user.selectOptions(screen.getByRole('combobox'), 'admin')
+    await waitFor(() => {
+      expect(screen.getByLabelText(/permissions/i)).toBeInTheDocument()
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // 109. labels.submit changes the submit button text
+  // ---------------------------------------------------------------------------
+
+  it('109. labels.submit changes the submit button text', () => {
+    const schema = z.object({ name: z.string() })
+    render(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        labels={{ submit: 'Send Form' }}
+      />,
+    )
+    expect(
+      screen.getByRole('button', { name: 'Send Form' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Submit' }),
+    ).not.toBeInTheDocument()
+  })
+
+  // ---------------------------------------------------------------------------
+  // 110. labels.arrayAdd changes the array add button text
+  // ---------------------------------------------------------------------------
+
+  it('110. labels.arrayAdd changes the array add button text', () => {
+    const schema = z.object({ tags: z.array(z.string()) })
+    render(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        labels={{ arrayAdd: 'Add Tag' }}
+      />,
+    )
+    expect(screen.getByRole('button', { name: 'Add Tag' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Add' }),
+    ).not.toBeInTheDocument()
+  })
+
+  // ---------------------------------------------------------------------------
+  // 111. labels.arrayRemove changes the array remove button text
+  // ---------------------------------------------------------------------------
+
+  it('111. labels.arrayRemove changes the array remove button text', async () => {
+    const schema = z.object({ tags: z.array(z.string()) })
+    setup(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        defaultValues={{ tags: ['hello'] }}
+        labels={{ arrayRemove: 'Delete' }}
+      />,
+    )
+    // Wait for the row to appear and verify remove button text
+    await waitFor(() => {
+      expect(screen.getByText('Delete')).toBeInTheDocument()
+    })
+    expect(screen.queryByText('Remove')).not.toBeInTheDocument()
+  })
+
+  // ---------------------------------------------------------------------------
+  // 112. labels.arrayMoveUp / labels.arrayMoveDown change move button texts
+  // ---------------------------------------------------------------------------
+
+  it('112. labels.arrayMoveUp and labels.arrayMoveDown change move button texts', async () => {
+    const schema = z.object({
+      items: z.array(z.object({ name: z.string() })),
+    })
+    setup(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        defaultValues={{ items: [{ name: 'A' }, { name: 'B' }] }}
+        fields={{ items: { movable: true } }}
+        labels={{ arrayMoveUp: 'Up', arrayMoveDown: 'Down' }}
+      />,
+    )
+    await waitFor(() => {
+      expect(screen.getAllByText('Up').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Down').length).toBeGreaterThan(0)
+    })
+    expect(screen.queryAllByText('↑')).toHaveLength(0)
+    expect(screen.queryAllByText('↓')).toHaveLength(0)
+  })
+
+  // ---------------------------------------------------------------------------
+  // 113. labels.arrayDuplicate changes the duplicate button text
+  // ---------------------------------------------------------------------------
+
+  it('113. labels.arrayDuplicate changes the duplicate button text', async () => {
+    const schema = z.object({
+      items: z.array(z.object({ name: z.string() })),
+    })
+    setup(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        defaultValues={{ items: [{ name: 'A' }] }}
+        fields={{ items: { duplicable: true } }}
+        labels={{ arrayDuplicate: 'Copy' }}
+      />,
+    )
+    await waitFor(() => {
+      expect(screen.getByText('Copy')).toBeInTheDocument()
+    })
+    expect(screen.queryByText('Duplicate')).not.toBeInTheDocument()
+  })
+
+  // ---------------------------------------------------------------------------
+  // 114. labels.arrayCollapse / labels.arrayExpand change toggle texts
+  // ---------------------------------------------------------------------------
+
+  it('114. labels.arrayCollapse and labels.arrayExpand change toggle texts', async () => {
+    const schema = z.object({
+      items: z.array(z.object({ name: z.string() })),
+    })
+    const { user } = setup(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        defaultValues={{ items: [{ name: 'A' }] }}
+        fields={{ items: { collapsible: true } }}
+        labels={{ arrayCollapse: 'Hide', arrayExpand: 'Show' }}
+      />,
+    )
+    // Initially expanded — collapse button should show "Hide"
+    await waitFor(() => {
+      expect(screen.getByText(/hide/i)).toBeInTheDocument()
+    })
+
+    // Click to collapse — expand button should show "Show"
+    await user.click(screen.getByText(/hide/i))
+    await waitFor(() => {
+      expect(screen.getByText(/show/i)).toBeInTheDocument()
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // 115. createAutoForm factory labels overridden by per-instance labels prop
+  // ---------------------------------------------------------------------------
+
+  it('115. factory-level labels are overridden by per-instance labels prop', () => {
+    const FactoryForm = createAutoForm({ labels: { submit: 'Save' } })
+    const schema = z.object({ name: z.string() })
+
+    const { rerender } = render(
+      <FactoryForm schema={schema} onSubmit={vi.fn()} />,
+    )
+    // Factory label applies
+    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument()
+
+    // Per-instance label overrides factory
+    rerender(
+      <FactoryForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        labels={{ submit: 'Save & Close' }}
+      />,
+    )
+    expect(
+      screen.getByRole('button', { name: 'Save & Close' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Save' }),
+    ).not.toBeInTheDocument()
   })
 })

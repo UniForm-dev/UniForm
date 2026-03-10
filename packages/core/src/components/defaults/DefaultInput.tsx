@@ -14,7 +14,7 @@ function formatValue(value: unknown): string {
     return value.toISOString().split('T')[0]
   }
   if (value === null || value === undefined) return ''
-  return String(value)
+  return String(value as string | number | boolean)
 }
 
 export function DefaultInput(props: FieldProps) {

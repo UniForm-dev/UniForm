@@ -15,7 +15,7 @@ export function DefaultSelect(props: FieldProps) {
     <select
       id={name}
       name={name}
-      value={String(value ?? '')}
+      value={String((value ?? '') as string | number)}
       onChange={(e) => onChange(e.target.value)}
       onBlur={onBlur}
       required={required}

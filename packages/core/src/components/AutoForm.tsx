@@ -2,7 +2,12 @@ import * as React from 'react'
 import { useForm, useWatch, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import type * as z from 'zod/v4'
-import type { AutoFormProps, AutoFormHandle, FieldConfig } from '../types'
+import type {
+  AutoFormProps,
+  AutoFormHandle,
+  FieldConfig,
+  FieldMeta,
+} from '../types'
 import { introspectObjectSchema } from '../introspection/introspect'
 import { mergeRegistries } from '../registry/mergeRegistries'
 import { defaultRegistry } from '../registry/defaultRegistry'
@@ -148,6 +153,7 @@ export function AutoForm<TSchema extends z.ZodObject<z.ZodRawShape>>(
     persistDebounce = 300,
     persistStorage,
     onValuesChange,
+    labels = {},
     ref,
   } = props
 
@@ -162,7 +168,11 @@ export function AutoForm<TSchema extends z.ZodObject<z.ZodRawShape>>(
   )
 
   const mergedFields = React.useMemo(
-    () => applyFieldOverrides(rawFields, fieldOverridesProp),
+    () =>
+      applyFieldOverrides(
+        rawFields,
+        fieldOverridesProp as Record<string, Partial<FieldMeta>>,
+      ),
     [rawFields, fieldOverridesProp],
   )
 
@@ -274,6 +284,7 @@ export function AutoForm<TSchema extends z.ZodObject<z.ZodRawShape>>(
         disabled,
         coercions,
         messages,
+        labels,
       }}
     >
       <form

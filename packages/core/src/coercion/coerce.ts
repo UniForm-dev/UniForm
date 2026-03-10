@@ -12,12 +12,12 @@ export const defaultCoercionMap: CoercionMap = {
   },
   date: (value: unknown) => {
     if (value === '' || value === null || value === undefined) return undefined
-    const d = new Date(String(value))
+    const d = new Date(String(value as string | number | Date))
     return isNaN(d.getTime()) ? value : d
   },
   boolean: (value: unknown) => Boolean(value),
   string: (value: unknown) =>
-    value == null || value == undefined ? '' : String(value),
+    value == null || value == undefined ? '' : String(value as string | number | boolean),
 }
 
 export function coerceValue(

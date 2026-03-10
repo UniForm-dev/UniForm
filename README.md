@@ -25,7 +25,9 @@ UniForm takes a Zod schema and automatically renders a fully customizable form. 
 - **Array button styling** — `classNames.arrayAdd`, `arrayRemove`, `arrayMove`, `arrayDuplicate`, `arrayCollapse`
 - **Custom array row layout** — `layout.arrayRowLayout` lets you fully control button placement within each array row
 - **Field dependencies** — `meta.depend` reactively overrides a field's `options`, `hidden`, `disabled`, `label`, `placeholder`, or `description` based on other field values (country → state cascade, dynamic labels, etc.)
+- **Typed `depend` in `fields` prop** — when using `depend` insidpe the `fields` prop, the `values` argument is typed to `z.infer<TSchema>`, providing full IDE autocomlete and type safety
 - **Value cascade** — `onValuesChange` fires on every change with the full form values; use with `ref.setValues()` to imperatively sync field values
+- **i18n / custom labels** — `labels` prop (and factory-level `labels` config) replaces every hard-coded UI string (`"Submit"`, `"Add"`, `"Remove"`, move/duplicate/collapse buttons) without touching layout slots
 - **Tree-shakeable** — ESM + CJS builds via tsup with `sideEffects: false`
 
 ## Quick Start
@@ -88,6 +90,7 @@ That's it — UniForm introspects the schema, renders appropriate inputs, valida
 | `persistDebounce` | `number`                                              | `300`                 | Debounce interval in ms for persistence writes                              |
 | `persistStorage`  | `PersistStorage`                                      | `localStorage`        | Custom storage adapter (must implement `getItem`/`setItem`/`removeItem`)    |
 | `onValuesChange`  | `(values: z.infer<TSchema>) => void`                  | `undefined`           | Called on every field change with the full current form values              |
+| `labels`          | `FormLabels`                                          | `{}`                  | Override hard-coded UI text (submit button, array buttons) for i18n         |
 
 ### `createAutoForm(config)`
 
@@ -115,15 +118,16 @@ const MyAutoForm = createAutoForm({
 
 **Config type:** `AutoFormConfig`
 
-| Key            | Type                                     | Merge behavior                                |
-| -------------- | ---------------------------------------- | --------------------------------------------- |
-| `components`   | `ComponentRegistry`                      | Deep merge (instance overrides specific keys) |
-| `fieldWrapper` | `React.ComponentType<FieldWrapperProps>` | Instance replaces factory                     |
-| `layout`       | `LayoutSlots`                            | Shallow merge                                 |
-| `classNames`   | `FormClassNames`                         | Shallow merge                                 |
-| `disabled`     | `boolean`                                | OR logic (either `true` → disabled)           |
-| `coercions`    | `CoercionMap`                            | Shallow merge                                 |
-| `messages`     | `ValidationMessages`                     | Shallow merge                                 |
+| Key            | Type                                     | Merge behavior                                   |
+| -------------- | ---------------------------------------- | ------------------------------------------------ |
+| `components`   | `ComponentRegistry`                      | Deep merge (instance overrides specific keys)    |
+| `fieldWrapper` | `React.ComponentType<FieldWrapperProps>` | Instance replaces factory                        |
+| `layout`       | `LayoutSlots`                            | Shallow merge                                    |
+| `classNames`   | `FormClassNames`                         | Shallow merge                                    |
+| `disabled`     | `boolean`                                | OR logic (either `true` → disabled)              |
+| `coercions`    | `CoercionMap`                            | Shallow merge                                    |
+| `messages`     | `ValidationMessages`                     | Shallow merge                                    |
+| `labels`       | `FormLabels`                             | Shallow merge (instance overrides specific keys) |
 
 ### Types
 
@@ -142,7 +146,7 @@ type FieldMeta = {
   hidden?: boolean // Hide the field
   disabled?: boolean // Disable the field
   condition?: (values: Record<string, unknown>) => boolean // Show/hide conditionally
-  depend?: (values: Record<string, unknown>) => FieldDependencyResult // Reactive overrides
+  depend?: (values: Record<string, unknown>) => FieldDependencyResult // Reactive overrides (schema-level)
   component?: string | React.ComponentType<FieldProps>
   //          ^^^^^^   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   //          registry key        direct component (bypasses registry)
@@ -747,6 +751,60 @@ fields={{
 ```
 
 > **Tip:** `depend` is evaluated on every change. Guards like `values.country === 'ca'` make it efficient. For **value** cascade (resetting field B when A changes), use `onValuesChange` + `ref.setValues()` instead.
+
+> **Type safety:** When `depend` is defined via the `fields` prop (rather than directly in the Zod schema), the `values` argument is fully typed to `z.infer<TSchema>`. Use `FieldOverride<z.infer<typeof schema>>` or just let TypeScript infer it from the `fields` prop.
+
+### Customizing UI Text (i18n)
+
+Use the `labels` prop to replace every hard-coded string in the default UI — submit button, all array action buttons — without needing to replace entire layout slot components:
+
+```tsx
+<AutoForm
+  schema={schema}
+  onSubmit={handleSubmit}
+  labels={{
+    submit: 'Enviar',
+    arrayAdd: 'Agregar fila',
+    arrayRemove: 'Eliminar',
+    arrayMoveUp: '⬆ Subir',
+    arrayMoveDown: '⬇ Bajar',
+    arrayDuplicate: 'Duplicar',
+    arrayCollapse: '▼ Ocultar',  // shown when row is expanded
+    arrayExpand: '▶ Mostrar',    // shown when row is collapsed
+  }}
+/>
+```
+
+Set factory-level defaults with `labels` in `createAutoForm` — per-instance `labels` props shallow-merge and override:
+
+```tsx
+const AppAutoForm = createAutoForm({
+  labels: { submit: 'Save' },
+})
+
+// Uses factory default "Save"
+<AppAutoForm schema={schema} onSubmit={handleSubmit} />
+
+// Per-instance override wins → "Save & Close"
+<AppAutoForm schema={schema} onSubmit={handleSubmit} labels={{ submit: 'Save & Close' }} />
+```
+
+**`FormLabels` type reference:**
+
+```ts
+type FormLabels = {
+  submit?: string         // default: "Submit"
+  arrayAdd?: string       // default: "Add"
+  arrayRemove?: string    // default: "Remove"
+  arrayMoveUp?: string    // default: "↑"
+  arrayMoveDown?: string  // default: "↓"
+  arrayDuplicate?: string // default: "Duplicate"
+  arrayCollapse?: string  // shown when row is expanded (default: "▼")
+  arrayExpand?: string    // shown when row is collapsed (default: "▶")
+}
+```
+
+All unspecified keys fall back to their built-in English defaults. `labels` only affects the **default** submit button and array controls — if you supply a custom `layout.submitButton` component, that component owns its own text.
 
 ### Value Cascade (`onValuesChange`)
 

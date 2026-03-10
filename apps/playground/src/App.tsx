@@ -14,6 +14,7 @@ import Example13 from './examples/Example13'
 import Example14 from './examples/Example14'
 import Example15 from './examples/Example15'
 import Example16 from './examples/Example16'
+import Example17 from './examples/Example17'
 
 const examples = [
   { id: 'ex1', label: '1. classNames + span' },
@@ -32,6 +33,7 @@ const examples = [
   { id: 'ex14', label: '14. Value Cascade' },
   { id: 'ex15', label: '15. Field Dependencies' },
   { id: 'ex16', label: '16. Per-field Custom Components' },
+  { id: 'ex17', label: '17. Typed Dependencies & Custom Labels' },
 ]
 
 export default function App() {
@@ -108,6 +110,8 @@ export default function App() {
       <Example15 />
       <hr style={{ margin: '2rem 0' }} />
       <Example16 />
+      <hr style={{ margin: '2rem 0' }} />
+      <Example17 />
     </main>
   )
 }

@@ -102,3 +102,36 @@
   - [ ] Sub-example A: `MultiAutocomplete` chip tag picker on `z.array(z.string()).min(1)` + `StarRating` — both passed directly as `meta.component`; `ArrayField` row UI completely bypassed
   - [ ] Sub-example B: `ColorPicker` registered in `createAutoForm` factory under `'colorpicker'` key, referenced by string
 - [ ] README — updated `FieldMeta.component` type docs, features bullet, and "Per-field Custom Components" recipe with both approaches, resolution priority, and array-field bypass pattern
+
+## Phase 8 — Typed `depend` Values & i18n Label Strings
+
+- [ ] Typed `depend` in `fields` prop
+  - [ ] Add `FieldOverride<TValues>` type: `Omit<Partial<FieldMeta>, 'depend'> & { depend?: (values: TValues) => FieldDependencyResult }`
+  - [ ] Update `AutoFormProps.fields` to `Record<string, FieldOverride<z.infer<TSchema>>>`
+  - [ ] Internal cast in `AutoForm.tsx` when calling `applyFieldOverrides` (no runtime change)
+  - [ ] Export `FieldOverride` from `index.ts`
+  - [ ] `FieldMetaBase.depend` unchanged (`Record<string, unknown>`)
+- [ ] `FormLabels` type and `labels` prop
+  - [ ] Add `FormLabels` type with keys: `submit`, `arrayAdd`, `arrayRemove`, `arrayMoveUp`, `arrayMoveDown`, `arrayDuplicate`, `arrayCollapse`, `arrayExpand`
+  - [ ] Add `labels?: FormLabels` to `AutoFormProps`
+  - [ ] Add `labels?: FormLabels` to `AutoFormConfig`
+  - [ ] Add `labels: FormLabels` to `AutoFormContextValue`
+  - [ ] Thread `labels` through `AutoForm.tsx` into context
+  - [ ] Factory merging in `createAutoForm.tsx` (factory labels + prop labels merge, prop wins)
+  - [ ] `DefaultSubmitButton` reads `labels.submit ?? 'Submit'` from context
+  - [ ] `ArrayField` reads all array label keys from context with string fallbacks
+  - [ ] Export `FormLabels` from `index.ts`
+- [ ] Tests 108–115
+  - [ ] 108: `fields.depend` callback is called and returns correct override at runtime
+  - [ ] 109: `labels.submit` changes submit button text
+  - [ ] 110: `labels.arrayAdd` changes array add button text
+  - [ ] 111: `labels.arrayRemove` changes array remove button text
+  - [ ] 112: `labels.arrayMoveUp` / `labels.arrayMoveDown` change move button texts
+  - [ ] 113: `labels.arrayDuplicate` changes duplicate button text
+  - [ ] 114: `labels.arrayCollapse` / `labels.arrayExpand` change collapse/expand toggle texts
+  - [ ] 115: factory-level labels are overridden by per-instance `labels` prop
+- [ ] Playground Example 17 — three sub-examples
+  - [ ] Sub-example A: typed `depend` in `fields` prop — `role` enum controls `permissions` field visibility with full type safety on `values.role`
+  - [ ] Sub-example B: Spanish-language form — all button/submit labels passed via `labels` prop
+  - [ ] Sub-example C: factory-level labels overridden by per-instance prop
+- [ ] README — "Customizing UI Text (i18n)" recipe, `labels` prop in API table, typed `depend` note under `meta.depend`

@@ -210,6 +210,46 @@ export type FormClassNames = {
 }
 
 // ---------------------------------------------------------------------------
+// FieldOverride
+// ---------------------------------------------------------------------------
+
+/**
+ * A per-field override entry used in the AutoFormProps `fields` prop.
+ * Unlike the base FieldMeta, the `depend` callback here is typed to the
+ * specific schema's inferred value type, providing full IDE autocomplete.
+ */
+export type FieldOverride<TValues = Record<string, unknown>> = Omit<
+  Partial<FieldMetaBase>,
+  'depend'
+> & {
+  depend?: (values: TValues) => FieldDependencyResult
+  [key: string]: unknown
+}
+
+// ---------------------------------------------------------------------------
+// FormLabels
+// ---------------------------------------------------------------------------
+
+export type FormLabels = {
+  /** Submit button text — default: "Submit" */
+  submit?: string
+  /** Array "Add item" button — default: "Add" */
+  arrayAdd?: string
+  /** Array "Remove row" button — default: "Remove" */
+  arrayRemove?: string
+  /** Array "Move row up" button — default: "↑" */
+  arrayMoveUp?: string
+  /** Array "Move row down" button — default: "↓" */
+  arrayMoveDown?: string
+  /** Array "Duplicate row" button — default: "Duplicate" */
+  arrayDuplicate?: string
+  /** Array row toggle shown when the row is expanded (clicking collapses it) — default: "▼" */
+  arrayCollapse?: string
+  /** Array row toggle shown when the row is collapsed (clicking expands it) — default: "▶" */
+  arrayExpand?: string
+}
+
+// ---------------------------------------------------------------------------
 // CoercionMap
 // ---------------------------------------------------------------------------
 
@@ -267,6 +307,8 @@ export type AutoFormConfig = {
   disabled?: boolean
   coercions?: CoercionMap
   messages?: ValidationMessages
+  /** Default label strings; overridden per-instance by the `labels` prop */
+  labels?: FormLabels
 }
 
 // ---------------------------------------------------------------------------
@@ -278,7 +320,7 @@ export type AutoFormProps<TSchema extends z.ZodObject<z.ZodRawShape>> = {
   onSubmit: (values: z.infer<TSchema>) => void | Promise<void>
   defaultValues?: Partial<z.infer<TSchema>>
   components?: ComponentRegistry
-  fields?: Record<string, Partial<FieldMeta>>
+  fields?: Record<string, FieldOverride<z.infer<TSchema>>>
   fieldWrapper?: React.ComponentType<FieldWrapperProps>
   layout?: LayoutSlots
   classNames?: FormClassNames
@@ -293,4 +335,6 @@ export type AutoFormProps<TSchema extends z.ZodObject<z.ZodRawShape>> = {
   persistStorage?: PersistStorage
   /** Called on every value change with the current form values */
   onValuesChange?: (values: z.infer<TSchema>) => void
+  /** Customize hard-coded UI text (submit button, array buttons, etc.) */
+  labels?: FormLabels
 }
