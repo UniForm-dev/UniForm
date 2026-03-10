@@ -2,6 +2,7 @@ import * as React from 'react'
 import type {
   CoercionMap,
   ComponentRegistry,
+  FieldOnChangeFormMethods,
   FieldWrapperProps,
   ResolvedLayoutSlots,
   FormClassNames,
@@ -19,6 +20,7 @@ export type AutoFormContextValue = {
   coercions?: CoercionMap
   messages?: ValidationMessages
   labels: FormLabels
+  formMethods: FieldOnChangeFormMethods
 }
 
 const AutoFormContext = React.createContext<AutoFormContextValue | null>(null)

@@ -20,6 +20,7 @@ export function ScalarField({
     registry,
     disabled: contextDisabled,
     coercions,
+    formMethods,
   } = useAutoFormContext()
   const Component = resolveComponent(field, registry)
 
@@ -33,9 +34,11 @@ export function ScalarField({
         <Component
           name={effectiveName}
           value={(rhfField.value as unknown) ?? ''}
-          onChange={(value) =>
-            rhfField.onChange(coerceValue(field.type, value, coercions))
-          }
+          onChange={(value) => {
+            const coerced = coerceValue(field.type, value, coercions)
+            rhfField.onChange(coerced)
+            field.meta.onChange?.(coerced, formMethods)
+          }}
           onBlur={rhfField.onBlur}
           ref={rhfField.ref}
           label={field.label}

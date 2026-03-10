@@ -7,6 +7,7 @@ import type {
   AutoFormHandle,
   FieldConfig,
   FieldMeta,
+  FieldOnChangeFormMethods,
 } from '../types'
 import { introspectObjectSchema } from '../introspection/introspect'
 import { mergeRegistries } from '../registry/mergeRegistries'
@@ -286,6 +287,32 @@ export function AutoForm<TSchema extends z.ZodObject<z.ZodRawShape>>(
     onValuesChangeRef.current?.(allValues as z.infer<TSchema>)
   }, [allValues])
 
+  const formMethods = React.useMemo<FieldOnChangeFormMethods>(
+    () => ({
+      setValue: (name, value) =>
+        rhf.setValue(name, value as never, {
+          shouldValidate: true,
+          shouldDirty: true,
+        }),
+      getValues: () => rhf.getValues() as Record<string, unknown>,
+      resetField: (name) => rhf.resetField(name),
+      reset: (values) => {
+        if (values) {
+          rhf.reset({
+            ...rhf.getValues(),
+            ...values,
+          } as Record<string, unknown>)
+        } else {
+          rhf.reset()
+        }
+      },
+      setError: (name, message) =>
+        rhf.setError(name, { type: 'manual', message }),
+      clearErrors: (names?) => rhf.clearErrors(names),
+    }),
+    [rhf],
+  )
+
   const fieldsWithDeps = useFieldDependencies(
     mergedFields,
     control,
@@ -319,6 +346,7 @@ export function AutoForm<TSchema extends z.ZodObject<z.ZodRawShape>>(
         coercions,
         messages,
         labels,
+        formMethods,
       }}
     >
       <form

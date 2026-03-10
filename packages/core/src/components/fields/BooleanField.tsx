@@ -15,7 +15,11 @@ export function BooleanField({
   control,
   effectiveName,
 }: BooleanFieldProps) {
-  const { registry, disabled: contextDisabled } = useAutoFormContext()
+  const {
+    registry,
+    disabled: contextDisabled,
+    formMethods,
+  } = useAutoFormContext()
   const Component = resolveComponent(field, registry)
 
   if (!Component) return null
@@ -28,7 +32,10 @@ export function BooleanField({
         <Component
           name={effectiveName}
           value={(rhfField.value as unknown) ?? false}
-          onChange={rhfField.onChange}
+          onChange={(value) => {
+            rhfField.onChange(value)
+            field.meta.onChange?.(value, formMethods)
+          }}
           onBlur={rhfField.onBlur}
           ref={rhfField.ref}
           label={field.label}

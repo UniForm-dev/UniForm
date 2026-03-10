@@ -41,6 +41,23 @@ type DeepKeys<T> = T extends object
     }[keyof T & string]
   : never
 
+/**
+ * Resolves the value type at a dot-notated path within a type `T`.
+ * Array fields use the unprefixed child path (matching `DeepKeys` convention).
+ *
+ * @example
+ * // DeepFieldValue<{ name: string; items: { qty: number }[] }, 'items.qty'> → number
+ */
+type DeepFieldValue<T, K extends string> = K extends keyof T
+  ? T[K]
+  : K extends `${infer Head}.${infer Tail}`
+    ? Head extends keyof T
+      ? T[Head] extends (infer Item)[]
+        ? DeepFieldValue<NonNullable<Item>, Tail>
+        : DeepFieldValue<NonNullable<T[Head]>, Tail>
+      : unknown
+    : unknown
+
 // ---------------------------------------------------------------------------
 // FieldType
 // ---------------------------------------------------------------------------
@@ -88,6 +105,32 @@ export type SelectOption = {
 export type FieldCondition<TValues = Record<string, unknown>> = (
   values: TValues,
 ) => boolean
+
+// ---------------------------------------------------------------------------
+// FieldOnChangeFormMethods
+// ---------------------------------------------------------------------------
+
+/**
+ * The form control methods passed as the second argument to a field's
+ * `onChange` callback. Provides programmatic access to read and update
+ * form state in response to a field value change.
+ *
+ * @template TValues - The shape of the form values object.
+ */
+export type FieldOnChangeFormMethods<TValues = Record<string, unknown>> = {
+  /** Set a field value programmatically */
+  setValue: (name: string, value: unknown) => void
+  /** Get the current form values */
+  getValues: () => TValues
+  /** Reset a single field to its default value */
+  resetField: (name: string) => void
+  /** Reset the entire form, optionally to new values */
+  reset: (values?: Partial<TValues>) => void
+  /** Set a validation error on a specific field */
+  setError: (name: string, message: string) => void
+  /** Clear validation errors (all fields, or specific ones) */
+  clearErrors: (names?: string | string[]) => void
+}
 
 // ---------------------------------------------------------------------------
 // FieldDependencyResult
@@ -166,6 +209,8 @@ export type FieldMetaBase = {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   component?: string | React.ComponentType<any>
+  /** Called when this field's value changes. Receives the new value and form control methods. */
+  onChange?: (value: unknown, form: FieldOnChangeFormMethods) => void
 }
 
 /**
@@ -173,7 +218,9 @@ export type FieldMetaBase = {
  * extra keys for custom component use-cases. Extends `FieldMetaBase` with
  * all the standard metadata properties.
  */
-export type FieldMeta = FieldMetaBase & { [key: string]: unknown }
+export type FieldMeta = FieldMetaBase & {
+  [key: string]: unknown
+}
 
 // ---------------------------------------------------------------------------
 // FieldConfig
@@ -428,11 +475,13 @@ export type FormClassNames = {
  * Unlike the base FieldMeta, the `depend` callback here is typed to the
  * specific schema's inferred value type, providing full IDE autocomplete.
  */
-export type FieldOverride<TValues = Record<string, unknown>> = Omit<
-  Partial<FieldMetaBase>,
-  'depend'
-> & {
+export type FieldOverride<
+  TValues = Record<string, unknown>,
+  TValue = unknown,
+> = Omit<Partial<FieldMetaBase>, 'depend'> & {
   depend?: (values: TValues) => FieldDependencyResult
+  /** Called when this field's value changes. Receives the new value and form control methods. */
+  onChange?: (value: TValue, form: FieldOnChangeFormMethods<TValues>) => void
   [key: string]: unknown
 }
 
@@ -575,9 +624,12 @@ export type AutoFormProps<TSchema extends z.ZodObject<z.ZodRawShape>> = {
   /** Component registry overrides for this form instance. */
   components?: ComponentRegistry
   /** Per-field UI metadata overrides (label, placeholder, options, etc.). */
-  fields?: Partial<
-    Record<DeepKeys<z.infer<TSchema>>, FieldOverride<z.infer<TSchema>>>
-  >
+  fields?: {
+    [K in DeepKeys<z.infer<TSchema>>]?: FieldOverride<
+      z.infer<TSchema>,
+      DeepFieldValue<z.infer<TSchema>, K>
+    >
+  }
   /** Field wrapper component override for this form instance. */
   fieldWrapper?: React.ComponentType<FieldWrapperProps>
   /** Layout slot overrides for this form instance. */
