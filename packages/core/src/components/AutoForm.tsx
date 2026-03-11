@@ -5,7 +5,6 @@ import type * as z from 'zod/v4/core'
 import type {
   AutoFormProps,
   AutoFormHandle,
-  FieldConfig,
   FieldCondition,
   FieldMeta,
   FormMethods,
@@ -17,235 +16,22 @@ import { mergeRegistries } from '../registry/mergeRegistries'
 import { defaultRegistry } from '../registry/defaultRegistry'
 import { DefaultFieldWrapper } from './defaults/DefaultFieldWrapper'
 import { DefaultSubmitButton } from './defaults/DefaultSubmitButton'
+import { DefaultFormWrapper } from './defaults/DefaultFormWrapper'
+import { DefaultSectionWrapper } from './defaults/DefaultSectionWrapper'
+import { DefaultArrayRowLayout } from './defaults/DefaultArrayRowLayout'
 import { AutoFormContextProvider } from '../context/AutoFormContext'
 import { FieldRenderer } from './FieldRenderer'
 import { useConditionalFields } from '../hooks/useConditionalFields'
 import { useSectionGrouping } from '../hooks/useSectionGrouping'
 import { useFormPersistence } from '../hooks/useFormPersistence'
 import { useLatestRef } from '../hooks/useLatestRef'
-
-type WithChildrenAndTitle = React.PropsWithChildren & { title: string }
-
-function DefaultFormWrapper({ children }: React.PropsWithChildren) {
-  return <>{children}</>
-}
-
-function DefaultSectionWrapper({ children, title }: WithChildrenAndTitle) {
-  return (
-    <fieldset>
-      <legend>{title}</legend>
-      {children}
-    </fieldset>
-  )
-}
-
-function DefaultArrayRowLayout({
-  children,
-  buttons,
-}: {
-  children: React.ReactNode
-  buttons: {
-    moveUp: React.ReactNode | null
-    moveDown: React.ReactNode | null
-    duplicate: React.ReactNode | null
-    remove: React.ReactNode
-    collapse: React.ReactNode | null
-  }
-  index: number
-  rowCount: number
-}) {
-  return (
-    <div>
-      {buttons.collapse}
-      {children}
-      <div>
-        {buttons.moveUp}
-        {buttons.moveDown}
-        {buttons.duplicate}
-        {buttons.remove}
-      </div>
-    </div>
-  )
-}
-
-/**
- * Recursively merges `overrides` (keyed by field name) into the `fields` tree,
- * applying each override to the matching field's `meta`. Descends into
- * `children` (object fields) and `itemConfig.children` (array-of-object fields).
- *
- * For array fields, keys prefixed with `"<arrayFieldName>."` are stripped before
- * matching against item children, so `"items.qty"` targets every row's `qty` field.
- */
-function applyFieldOverrides(
-  fields: FieldConfig[],
-  overrides: Record<string, Partial<FieldConfig['meta']>>,
-): FieldConfig[] {
-  return fields.map((field) => {
-    const override = overrides[field.name]
-    const updated = override
-      ? { ...field, meta: { ...field.meta, ...override } }
-      : field
-
-    // Recurse into object children
-    if (updated.type === 'object') {
-      const newChildren = applyFieldOverrides(updated.children, overrides)
-      if (newChildren !== updated.children) {
-        return { ...updated, children: newChildren }
-      }
-    }
-
-    // Recurse into array itemConfig (if it has children).
-    // Re-key overrides by stripping the "<arrayField>." prefix so that
-    // e.g. "items.qty" matches the child field named "qty".
-    if (updated.type === 'array' && updated.itemConfig.type === 'object') {
-      const prefix = `${updated.name}.`
-      const strippedOverrides: Record<string, Partial<FieldConfig['meta']>> = {}
-      for (const [key, value] of Object.entries(overrides)) {
-        if (key.startsWith(prefix)) {
-          strippedOverrides[key.slice(prefix.length)] = value
-        }
-      }
-      const newItemChildren = applyFieldOverrides(
-        updated.itemConfig.children,
-        strippedOverrides,
-      )
-      if (newItemChildren !== updated.itemConfig.children) {
-        return {
-          ...updated,
-          itemConfig: { ...updated.itemConfig, children: newItemChildren },
-        }
-      }
-    }
-
-    return updated
-  })
-}
-
-/**
- * Injects UniForm onChange handlers into each watched field's `meta.onChange`.
- * Composes with any existing static `meta.onChange` from the `fields` prop.
- */
-function injectOnChangeHandlers<TSchema extends z.$ZodObject>(
-  fields: FieldConfig[],
-  uniForm: UniForm<TSchema>,
-  ctx: UniFormContext<TSchema>,
-): FieldConfig[] {
-  const watched = new Set(uniForm._getWatchedFields())
-  if (!watched.size) return fields
-
-  return fields.map((field) => {
-    if (!watched.has(field.name)) return field
-    const existingOnChange = field.meta.onChange
-    return {
-      ...field,
-      meta: {
-        ...field.meta,
-        onChange: (value: unknown, formMethods: FormMethods) => {
-          existingOnChange?.(value, formMethods)
-          uniForm._fireHandlers(field.name, value, ctx)
-        },
-      },
-    }
-  })
-}
-
-/**
- * Injects UniForm conditions into field configs, recursing into object children
- * and array itemConfig. Object children already carry full dot-notated names so
- * they match the conditions map directly. Array item children use relative names,
- * so the array field's name is used as a prefix to find matching conditions and
- * the prefix is stripped before recursing.
- */
-function injectConditions(
-  fields: FieldConfig[],
-  conditions: Map<string, FieldCondition>,
-): FieldConfig[] {
-  if (!conditions.size) return fields
-
-  return fields.map((field) => {
-    const condition = conditions.get(field.name)
-    let updated: FieldConfig = condition
-      ? { ...field, meta: { ...field.meta, condition } }
-      : field
-
-    if (updated.type === 'object') {
-      const newChildren = injectConditions(updated.children, conditions)
-      if (newChildren !== updated.children)
-        updated = { ...updated, children: newChildren }
-    } else if (updated.type === 'array') {
-      const prefix = field.name + '.'
-      const itemConditions = new Map<string, FieldCondition>()
-      for (const [key, cond] of conditions) {
-        if (key.startsWith(prefix))
-          itemConditions.set(key.slice(prefix.length), cond)
-      }
-      if (itemConditions.size) {
-        const newItemConfig = injectConditions(
-          [updated.itemConfig],
-          itemConditions,
-        )[0]
-        if (newItemConfig !== updated.itemConfig)
-          updated = { ...updated, itemConfig: newItemConfig }
-      }
-    }
-
-    return updated
-  })
-}
-
-/**
- * Merges event-driven `dynamicMeta` overrides into the field configs.
- * Only fields with entries in `overrides` are cloned.
- */
-function applyDynamicMeta(
-  fields: FieldConfig[],
-  overrides: Record<string, Partial<FieldDependencyResult>>,
-): FieldConfig[] {
-  if (!Object.keys(overrides).length) return fields
-  return fields.map((field) => {
-    const override = overrides[field.name]
-    if (!override) return field
-    const { options, label, ...metaOverrides } = override
-    return {
-      ...field,
-      ...(label !== undefined ? { label } : {}),
-      ...(options !== undefined ? { options } : {}),
-      meta: { ...field.meta, ...metaOverrides },
-    }
-  })
-}
-
-/** Generate sensible empty defaults so RHF starts with '' instead of undefined */
-function buildDefaults(fields: FieldConfig[]): Record<string, unknown> {
-  const result: Record<string, unknown> = {}
-  for (const field of fields) {
-    const key = field.name
-    switch (field.type) {
-      case 'string':
-        result[key] = ''
-        break
-      case 'number':
-        result[key] = ''
-        break
-      case 'boolean':
-        result[key] = false
-        break
-      case 'select':
-        result[key] = field.options?.[0]?.value ?? ''
-        break
-      case 'array':
-        result[key] = []
-        break
-      case 'object':
-        // Recurse — but children have full dot-notated names; just use empty object
-        result[key] = {}
-        break
-      default:
-        break
-    }
-  }
-  return result
-}
+import {
+  applyFieldOverrides,
+  injectOnChangeHandlers,
+  injectConditions,
+  applyDynamicMeta,
+  buildDefaults,
+} from '../utils/fieldPipeline'
 
 /**
  * The core auto-form component. Introspects the provided Zod `schema`,

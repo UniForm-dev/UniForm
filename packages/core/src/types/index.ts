@@ -53,7 +53,7 @@ export type DeepKeys<T> = T extends object
  * @example
  * // DeepFieldValue<{ name: string; items: { qty: number }[] }, 'items.qty'> → number
  */
-type DeepFieldValue<T, K extends string> = K extends keyof T
+export type DeepFieldValue<T, K extends string> = K extends keyof T
   ? T[K]
   : K extends `${infer Head}.${infer Tail}`
     ? Head extends keyof T

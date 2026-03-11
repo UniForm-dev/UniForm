@@ -1,5 +1,5 @@
 import type * as z from 'zod/v4/core'
-import type { DeepKeys, FormMethods, FieldDependencyResult } from './types'
+import type { DeepKeys, DeepFieldValue, FormMethods, FieldDependencyResult } from './types'
 
 /**
  * Context passed to UniForm `onChange` handlers. Extends `FormMethods` with
@@ -67,9 +67,9 @@ export class UniForm<TSchema extends z.$ZodObject> {
    * Multiple handlers on the same field are all called in registration order.
    * Returns `this` for fluent chaining.
    */
-  onChange<K extends keyof z.infer<TSchema> & string>(
+  onChange<K extends DeepKeys<z.infer<TSchema>>>(
     field: K,
-    handler: Handler<TSchema, z.infer<TSchema>[K]>,
+    handler: Handler<TSchema, DeepFieldValue<z.infer<TSchema>, K>>,
   ): this {
     const list = this._handlers.get(field) ?? []
     this._handlers.set(field, [...list, handler as Handler<TSchema, unknown>])
