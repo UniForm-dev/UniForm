@@ -34,7 +34,7 @@ type ArrayItem<T> = T extends (infer U)[] ? U : never
  * // DeepKeys produces:
  * //   "name" | "address" | "address.street" | "items" | "items.qty"
  */
-type DeepKeys<T> = T extends object
+export type DeepKeys<T> = T extends object
   ? {
       [K in keyof T & string]: T[K] extends unknown[]
         ? ArrayItem<T[K]> extends object

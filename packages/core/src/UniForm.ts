@@ -1,5 +1,5 @@
 import type * as z from 'zod/v4/core'
-import type { FormMethods, FieldDependencyResult } from './types'
+import type { DeepKeys, FormMethods, FieldDependencyResult } from './types'
 
 /**
  * Context passed to UniForm `onChange` handlers. Extends `FormMethods` with
@@ -82,7 +82,7 @@ export class UniForm<TSchema extends z.$ZodObject> {
    * Composes with any `condition` set via the `fields` prop (UniForm takes precedence).
    * Returns `this` for fluent chaining.
    */
-  condition<K extends keyof z.infer<TSchema> & string>(
+  condition<K extends DeepKeys<z.infer<TSchema>>>(
     field: K,
     predicate: Condition<TSchema>,
   ): this {

@@ -150,26 +150,46 @@ function injectOnChangeHandlers<TSchema extends z.$ZodObject>(
 }
 
 /**
- * Injects UniForm conditions into each field's `meta.condition`.
- * UniForm conditions take precedence over any static `condition` from the `fields` prop.
+ * Injects UniForm conditions into field configs, recursing into object children
+ * and array itemConfig. Object children already carry full dot-notated names so
+ * they match the conditions map directly. Array item children use relative names,
+ * so the array field's name is used as a prefix to find matching conditions and
+ * the prefix is stripped before recursing.
  */
-function injectConditions<TSchema extends z.$ZodObject>(
+function injectConditions(
   fields: FieldConfig[],
-  uniForm: UniForm<TSchema>,
+  conditions: Map<string, FieldCondition>,
 ): FieldConfig[] {
-  const conditions = uniForm._getConditions()
   if (!conditions.size) return fields
 
   return fields.map((field) => {
     const condition = conditions.get(field.name)
-    if (!condition) return field
-    return {
-      ...field,
-      meta: {
-        ...field.meta,
-        condition: condition as FieldCondition,
-      },
+    let updated: FieldConfig = condition
+      ? { ...field, meta: { ...field.meta, condition } }
+      : field
+
+    if (updated.type === 'object') {
+      const newChildren = injectConditions(updated.children, conditions)
+      if (newChildren !== updated.children)
+        updated = { ...updated, children: newChildren }
+    } else if (updated.type === 'array') {
+      const prefix = field.name + '.'
+      const itemConditions = new Map<string, FieldCondition>()
+      for (const [key, cond] of conditions) {
+        if (key.startsWith(prefix))
+          itemConditions.set(key.slice(prefix.length), cond)
+      }
+      if (itemConditions.size) {
+        const newItemConfig = injectConditions(
+          [updated.itemConfig],
+          itemConditions,
+        )[0]
+        if (newItemConfig !== updated.itemConfig)
+          updated = { ...updated, itemConfig: newItemConfig }
+      }
     }
+
+    return updated
   })
 }
 
@@ -422,7 +442,14 @@ export function AutoForm<TSchema extends z.$ZodObject>(
 
   // Inject UniForm conditions into field.meta.condition
   const fieldsWithConditions = React.useMemo(
-    () => injectConditions(fieldsWithHandlers, uniForm as UniForm<TSchema>),
+    () =>
+      injectConditions(
+        fieldsWithHandlers,
+        (uniForm as UniForm<TSchema>)._getConditions() as Map<
+          string,
+          FieldCondition
+        >,
+      ),
     [fieldsWithHandlers, uniForm],
   )
 
