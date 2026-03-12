@@ -11,7 +11,10 @@ import type {
   FieldDependencyResult,
 } from '../types'
 import type { UniForm, UniFormContext } from '../UniForm'
-import { introspectObjectSchema } from '../introspection/introspect'
+import {
+  introspectObjectSchema,
+  introspectDiscriminatedUnionSchema,
+} from '../introspection/introspect'
 import { mergeRegistries } from '../registry/mergeRegistries'
 import { defaultRegistry } from '../registry/defaultRegistry'
 import { DefaultFieldWrapper } from './defaults/DefaultFieldWrapper'
@@ -76,10 +79,15 @@ export function AutoForm<TSchema extends z.$ZodObject>(
 
   const schema = uniForm.schema
 
-  const rawFields = React.useMemo(
-    () => introspectObjectSchema(schema),
-    [schema],
-  )
+  const rawFields = React.useMemo(() => {
+    const def = schema._zod.def as { type: string }
+    if (def.type === 'union') {
+      return introspectDiscriminatedUnionSchema(
+        schema as unknown as z.$ZodDiscriminatedUnion,
+      )
+    }
+    return introspectObjectSchema(schema)
+  }, [schema])
 
   const registry = React.useMemo(
     () => mergeRegistries(defaultRegistry, components),

@@ -118,16 +118,32 @@ export class UniForm<TSchema extends z.$ZodObject> {
 }
 
 /**
- * Creates a new `UniForm` instance for the given Zod schema.
- *
- * @example
- * const addressForm = createForm(addressSchema)
- *   .onChange('country', (value, ctx) => {
- *     ctx.setFieldMeta('state', { hidden: value !== 'US' })
- *   })
+ * Creates a new `UniForm` instance for the given Zod object schema.
  */
 export function createForm<TSchema extends z.$ZodObject>(
   schema: TSchema,
-): UniForm<TSchema> {
-  return new UniForm(schema)
+): UniForm<TSchema>
+
+/**
+ * Creates a `UniForm` directly from a `z.discriminatedUnion` schema.
+ *
+ * `AutoForm` automatically flattens the variant fields and attaches show/hide
+ * conditions based on the discriminator value — no manual `.condition()` calls
+ * needed. The union schema is used by `zodResolver` for strict per-variant
+ * validation on submit.
+ *
+ * @example
+ * const notificationForm = createForm(
+ *   z.discriminatedUnion('channel', [
+ *     z.object({ channel: z.literal('email'), email: z.string().email() }),
+ *     z.object({ channel: z.literal('sms'), phone: z.string() }),
+ *   ])
+ * )
+ */
+export function createForm(schema: z.$ZodDiscriminatedUnion): UniForm<z.$ZodObject>
+
+export function createForm(
+  schema: z.$ZodObject | z.$ZodDiscriminatedUnion,
+): UniForm<z.$ZodObject> {
+  return new UniForm(schema as unknown as z.$ZodObject)
 }
