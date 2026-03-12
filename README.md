@@ -624,6 +624,53 @@ const myForm = createForm(schema)
 />
 ```
 
+### Discriminated Unions
+
+Pass a `z.discriminatedUnion` directly to `createForm` — no flat schema needed:
+
+```tsx
+import * as z from 'zod/v4'
+import { createForm, AutoForm } from '@uniform/core'
+
+const notificationUnion = z.discriminatedUnion('channel', [
+  z.object({
+    channel: z.literal('email'),
+    recipientEmail: z.string().email('Must be a valid email'),
+    subject: z.string().min(1, 'Subject is required'),
+  }),
+  z.object({
+    channel: z.literal('sms'),
+    phoneNumber: z.string().regex(/^\+?[1-9]\d{7,14}$/, 'Must be a valid phone number'),
+    messageBody: z.string().max(160, 'SMS body must be ≤ 160 chars'),
+  }),
+  z.object({
+    channel: z.literal('webhook'),
+    endpointUrl: z.string().url('Must be a valid URL'),
+    secret: z.string().min(16, 'Secret must be at least 16 characters'),
+  }),
+])
+
+const notificationForm = createForm(notificationUnion)
+
+function NotificationForm() {
+  return (
+    <AutoForm
+      form={notificationForm}
+      defaultValues={{ channel: 'email' }}
+      onSubmit={(values) => console.log(values)}
+    />
+  )
+}
+```
+
+**How it works:**
+
+- The discriminator field (`channel`) renders as a `select` with one option per variant
+- When the discriminator changes, AutoForm swaps to the matching variant and renders only that variant's fields
+- Validation uses the original union schema via `zodResolver` — only the active variant's fields are validated
+- **Shared fields** (same key in multiple variants) persist their values when switching variants, since react-hook-form retains unregistered field values by default
+- Variant-specific field values from a previous variant remain in the form store but are stripped by Zod during parsing
+
 ### Custom Validation Messages
 
 ```tsx
