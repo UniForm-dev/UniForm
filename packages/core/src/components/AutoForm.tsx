@@ -13,7 +13,7 @@ import type {
 import type { UniForm, UniFormContext } from '../UniForm'
 import {
   introspectObjectSchema,
-  introspectDiscriminatedUnionSchema,
+  parseDiscriminatedUnionMeta,
 } from '../introspection/introspect'
 import { mergeRegistries } from '../registry/mergeRegistries'
 import { defaultRegistry } from '../registry/defaultRegistry'
@@ -79,28 +79,27 @@ export function AutoForm<TSchema extends z.$ZodObject>(
 
   const schema = uniForm.schema
 
-  const rawFields = React.useMemo(() => {
+  // For discriminated unions: extract static metadata once
+  const unionInfo = React.useMemo(() => {
     const def = schema._zod.def as { type: string }
-    if (def.type === 'union') {
-      return introspectDiscriminatedUnionSchema(
-        schema as unknown as z.$ZodDiscriminatedUnion,
-      )
-    }
-    return introspectObjectSchema(schema)
+    if (def.type !== 'union') return null
+    return parseDiscriminatedUnionMeta(
+      schema as unknown as z.$ZodDiscriminatedUnion,
+    )
   }, [schema])
+
+  // Initial field list — for unions, use the first variant so buildDefaults has something
+  const rawFields = React.useMemo(() => {
+    if (!unionInfo) return introspectObjectSchema(schema)
+    const firstVariantFields = introspectObjectSchema(
+      unionInfo.firstVariant,
+    ).filter((f) => f.name !== unionInfo.discriminatorKey)
+    return [unionInfo.discriminatorField, ...firstVariantFields]
+  }, [schema, unionInfo])
 
   const registry = React.useMemo(
     () => mergeRegistries(defaultRegistry, components),
     [components],
-  )
-
-  const mergedFields = React.useMemo(
-    () =>
-      applyFieldOverrides(
-        rawFields,
-        fieldOverridesProp as Record<string, Partial<FieldMeta>>,
-      ),
-    [rawFields, fieldOverridesProp],
   )
 
   const generatedDefaults = React.useMemo(
@@ -133,6 +132,34 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     setError,
     setFocus,
   } = rhf
+
+  // For discriminated unions: watch the discriminator and swap to the matching variant's fields
+  const discriminatorValue = useWatch({
+    control,
+    name: (unionInfo?.discriminatorKey ?? '') as never,
+    disabled: !unionInfo?.discriminatorKey,
+  })
+
+  const activeFields = React.useMemo(() => {
+    if (!unionInfo) return rawFields
+    const variant = unionInfo.variantMap.get(
+      discriminatorValue as unknown as string,
+    )
+    if (!variant) return [unionInfo.discriminatorField]
+    const variantFields = introspectObjectSchema(variant).filter(
+      (f) => f.name !== unionInfo.discriminatorKey,
+    )
+    return [unionInfo.discriminatorField, ...variantFields]
+  }, [unionInfo, discriminatorValue, rawFields])
+
+  const mergedFields = React.useMemo(
+    () =>
+      applyFieldOverrides(
+        activeFields,
+        fieldOverridesProp as Record<string, Partial<FieldMeta>>,
+      ),
+    [activeFields, fieldOverridesProp],
+  )
 
   const { clearPersistedData } = useFormPersistence({
     control,

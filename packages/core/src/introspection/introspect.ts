@@ -175,6 +175,59 @@ export function introspectObjectSchema(schema: z.$ZodObject): FieldConfig[] {
 }
 
 // ---------------------------------------------------------------------------
+// Discriminated union metadata helper (used by AutoForm for variant-swap)
+// ---------------------------------------------------------------------------
+
+/**
+ * Extracts static metadata from a `ZodDiscriminatedUnion` schema:
+ * the discriminator key, a map of discriminator-value → variant ZodObject,
+ * and a pre-built `FieldConfig` for the discriminator select field.
+ *
+ * Used by `AutoForm` to reactively swap variant fields without flattening.
+ */
+export function parseDiscriminatedUnionMeta(schema: z.$ZodDiscriminatedUnion): {
+  discriminatorKey: string
+  variantMap: Map<string, z.$ZodObject>
+  discriminatorField: FieldConfig
+  firstVariant: z.$ZodObject
+} {
+  const def = schema._zod.def
+  const discriminatorKey = def.discriminator
+  const variants = def.options as z.$ZodObject[]
+
+  const variantMap = new Map<string, z.$ZodObject>()
+  const discriminatorOptions: SelectOption[] = []
+
+  for (const variant of variants) {
+    const shape = variant._zod.def.shape as Record<string, z.$ZodAny>
+    const litDef = (shape[discriminatorKey] as unknown as z.$ZodLiteral)._zod
+      .def as { values: unknown[] }
+    const value = String(litDef.values[0])
+    variantMap.set(value, variant)
+    discriminatorOptions.push({
+      label: value.charAt(0).toUpperCase() + value.slice(1),
+      value,
+    })
+  }
+
+  const discriminatorField: FieldConfig = {
+    name: discriminatorKey,
+    type: 'select',
+    label: deriveLabel(discriminatorKey),
+    required: true,
+    meta: {},
+    options: discriminatorOptions,
+  }
+
+  return {
+    discriminatorKey,
+    variantMap,
+    discriminatorField,
+    firstVariant: variants[0],
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Convenience wrapper for top-level ZodDiscriminatedUnion schemas
 // ---------------------------------------------------------------------------
 

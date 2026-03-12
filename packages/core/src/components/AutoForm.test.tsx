@@ -4,7 +4,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as z from 'zod/v4'
 import { AutoForm } from './AutoForm'
-import { UniForm } from '../UniForm'
+import { UniForm, createForm } from '../UniForm'
 import { createAutoForm } from '../factory/createAutoForm'
 import { introspectSchema } from '../introspection/introspect'
 import type { FieldProps } from '../types'
@@ -2879,5 +2879,144 @@ describe('AutoForm', () => {
     await user.click(screen.getByRole('button', { name: /add/i }))
     const qtyInputs = screen.getAllByPlaceholderText('e.g. 5')
     expect(qtyInputs).toHaveLength(2)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Discriminated union
+// ---------------------------------------------------------------------------
+
+describe('AutoForm — discriminated union', () => {
+  const union = z.discriminatedUnion('channel', [
+    z.object({
+      channel: z.literal('email'),
+      recipientEmail: z.string().min(1, 'Email is required'),
+    }),
+    z.object({
+      channel: z.literal('sms'),
+      phoneNumber: z.string().min(1, 'Phone is required'),
+    }),
+  ])
+  const form = createForm(union)
+
+  // -------------------------------------------------------------------------
+  // 120. Initial render — discriminator select + first variant's fields only
+  // -------------------------------------------------------------------------
+
+  it('120. renders the discriminator select and first-variant fields on mount', () => {
+    render(
+      <AutoForm
+        form={form}
+        defaultValues={{ channel: 'email' }}
+        onSubmit={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('combobox')).toBeInTheDocument()
+    expect(screen.getByLabelText(/recipient email/i)).toBeInTheDocument()
+    expect(screen.queryByLabelText(/phone number/i)).not.toBeInTheDocument()
+  })
+
+  // -------------------------------------------------------------------------
+  // 121. Variant swap — selecting sms hides email fields, shows sms fields
+  // -------------------------------------------------------------------------
+
+  it('121. swaps to the sms variant when the discriminator changes', async () => {
+    const { user } = setup(
+      <AutoForm
+        form={form}
+        defaultValues={{ channel: 'email' }}
+        onSubmit={vi.fn()}
+      />,
+    )
+    await user.selectOptions(screen.getByRole('combobox'), 'sms')
+    await waitFor(() => {
+      expect(
+        screen.queryByLabelText(/recipient email/i),
+      ).not.toBeInTheDocument()
+      expect(screen.getByLabelText(/phone number/i)).toBeInTheDocument()
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // 122. Successful submit — onSubmit receives only the active variant's fields
+  // -------------------------------------------------------------------------
+
+  it('122. calls onSubmit with the active variant payload on valid submit', async () => {
+    const onSubmit = vi.fn()
+    const { user } = setup(
+      <AutoForm
+        form={form}
+        defaultValues={{ channel: 'email' }}
+        onSubmit={onSubmit}
+      />,
+    )
+    await user.type(
+      screen.getByLabelText(/recipient email/i),
+      'alice@example.com',
+    )
+    await user.click(screen.getByRole('button', { name: /submit/i }))
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith({
+        channel: 'email',
+        recipientEmail: 'alice@example.com',
+      })
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // 123. Validation — union schema rejects missing required variant field
+  // -------------------------------------------------------------------------
+
+  it('123. shows a validation error when a required variant field is empty', async () => {
+    const { user } = setup(
+      <AutoForm
+        form={form}
+        defaultValues={{ channel: 'email' }}
+        onSubmit={vi.fn()}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: /submit/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // 124. Shared fields — value is preserved when switching variants
+  // -------------------------------------------------------------------------
+
+  it('124. preserves a shared field value when switching variants', async () => {
+    const sharedUnion = z.discriminatedUnion('type', [
+      z.object({ type: z.literal('a'), shared: z.string(), aOnly: z.string() }),
+      z.object({ type: z.literal('b'), shared: z.string(), bOnly: z.string() }),
+    ])
+    const { user } = setup(
+      <AutoForm
+        form={createForm(sharedUnion)}
+        defaultValues={{ type: 'a' }}
+        onSubmit={vi.fn()}
+      />,
+    )
+    await user.type(screen.getByLabelText(/shared/i), 'hello')
+    await user.selectOptions(screen.getByRole('combobox'), 'b')
+    await waitFor(() => {
+      expect(screen.getByLabelText(/shared/i)).toHaveValue('hello')
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // 125. Field overrides — fields prop applies to the active variant's fields
+  // -------------------------------------------------------------------------
+
+  it('125. applies field overrides to the active variant fields', () => {
+    render(
+      <AutoForm
+        form={form}
+        defaultValues={{ channel: 'email' }}
+        onSubmit={vi.fn()}
+        fields={{ recipientEmail: { placeholder: 'you@example.com' } }}
+      />,
+    )
+    expect(screen.getByPlaceholderText('you@example.com')).toBeInTheDocument()
   })
 })
