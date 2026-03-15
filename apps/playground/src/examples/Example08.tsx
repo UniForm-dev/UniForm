@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import * as z from 'zod/v4'
-import { createAutoForm } from '@uniform/core'
+import { createAutoForm, createForm } from '@uniform/core'
 import {
   BrandedInput,
   BrandedFieldWrapper,
@@ -24,6 +24,11 @@ const kitchenSinkSchema = z.object({
   notes: z.string().optional(),
 })
 
+const kitchenSinkForm = createForm(kitchenSinkSchema).condition(
+  'notes',
+  (values) => values.hasNotes,
+)
+
 const KitchenSinkAutoForm = createAutoForm({
   components: {
     string: BrandedInput,
@@ -45,7 +50,7 @@ export default function Example08() {
         objects, and arrays.
       </p>
       <KitchenSinkAutoForm
-        schema={kitchenSinkSchema}
+        form={kitchenSinkForm}
         defaultValues={{
           role: 'user',
           hasNotes: false,
@@ -61,11 +66,7 @@ export default function Example08() {
           'address.city': { placeholder: 'City / Town' },
           'address.zip': { placeholder: '00000', span: 6 },
           hasNotes: { order: 90 },
-          notes: {
-            order: 91,
-            condition: (vals: Record<string, unknown>) =>
-              vals['hasNotes'] === true,
-          },
+          notes: { order: 91 },
         }}
         messages={{
           required: 'This field is required',

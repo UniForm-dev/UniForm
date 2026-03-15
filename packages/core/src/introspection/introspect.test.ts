@@ -1,6 +1,10 @@
 import { describe, it, expect, assert } from 'vitest'
 import * as z from 'zod/v4'
-import { introspectSchema, introspectObjectSchema } from './introspect'
+import {
+  introspectSchema,
+  introspectObjectSchema,
+} from './introspect'
+import { parseDiscriminatedUnionMeta } from './discriminatedUnion'
 
 // ---------------------------------------------------------------------------
 // 1. Scalar types
@@ -446,5 +450,65 @@ describe('array min/max constraints', () => {
     assert(result.type === 'array')
     expect(result.minItems).toBeUndefined()
     expect(result.maxItems).toBeUndefined()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 17. parseDiscriminatedUnionMeta
+// ---------------------------------------------------------------------------
+
+describe('parseDiscriminatedUnionMeta', () => {
+  const union = z.discriminatedUnion('channel', [
+    z.object({ channel: z.literal('email'), recipientEmail: z.string() }),
+    z.object({ channel: z.literal('sms'), phoneNumber: z.string() }),
+    z.object({ channel: z.literal('webhook'), endpointUrl: z.string() }),
+  ])
+
+  it('returns the correct discriminatorKey', () => {
+    const meta = parseDiscriminatedUnionMeta(union)
+    expect(meta.discriminatorKey).toBe('channel')
+  })
+
+  it('builds the discriminator as a select field with one option per variant', () => {
+    const meta = parseDiscriminatedUnionMeta(union)
+    const field = meta.discriminatorField
+    assert(field.type === 'select')
+    expect(field.name).toBe('channel')
+    expect(field.required).toBe(true)
+    expect(field.options).toHaveLength(3)
+    expect(field.options.map((o) => o.value)).toEqual([
+      'email',
+      'sms',
+      'webhook',
+    ])
+  })
+
+  it('capitalises option labels from the literal values', () => {
+    const meta = parseDiscriminatedUnionMeta(union)
+    const field = meta.discriminatorField
+    assert(field.type === 'select')
+    expect(field.options[0].label).toBe('Email')
+    expect(field.options[1].label).toBe('Sms')
+  })
+
+  it('populates variantMap with an entry for every discriminator value', () => {
+    const meta = parseDiscriminatedUnionMeta(union)
+    expect(meta.variantMap.size).toBe(3)
+    expect(meta.variantMap.has('email')).toBe(true)
+    expect(meta.variantMap.has('sms')).toBe(true)
+    expect(meta.variantMap.has('webhook')).toBe(true)
+  })
+
+  it('each variantMap entry is the matching ZodObject', () => {
+    const meta = parseDiscriminatedUnionMeta(union)
+    const emailVariant = meta.variantMap.get('email')!
+    const shape = emailVariant._zod.def.shape as Record<string, unknown>
+    expect(Object.keys(shape)).toContain('recipientEmail')
+    expect(Object.keys(shape)).not.toContain('phoneNumber')
+  })
+
+  it('sets firstVariant to the first option in the union', () => {
+    const meta = parseDiscriminatedUnionMeta(union)
+    expect(meta.firstVariant).toBe(union._zod.def.options[0])
   })
 })

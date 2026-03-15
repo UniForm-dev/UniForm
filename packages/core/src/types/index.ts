@@ -1,6 +1,11 @@
 import type * as React from 'react'
-import { RefCallBack } from 'react-hook-form'
-import type * as z from 'zod/v4'
+import {
+  FieldPath,
+  FieldPathValue,
+  FieldValues,
+  RefCallBack,
+} from 'react-hook-form'
+import type * as z from 'zod/v4/core'
 
 // ---------------------------------------------------------------------------
 // DeepKeys
@@ -29,7 +34,7 @@ type ArrayItem<T> = T extends (infer U)[] ? U : never
  * // DeepKeys produces:
  * //   "name" | "address" | "address.street" | "items" | "items.qty"
  */
-type DeepKeys<T> = T extends object
+export type DeepKeys<T> = T extends object
   ? {
       [K in keyof T & string]: T[K] extends unknown[]
         ? ArrayItem<T[K]> extends object
@@ -40,6 +45,23 @@ type DeepKeys<T> = T extends object
           : K
     }[keyof T & string]
   : never
+
+/**
+ * Resolves the value type at a dot-notated path within a type `T`.
+ * Array fields use the unprefixed child path (matching `DeepKeys` convention).
+ *
+ * @example
+ * // DeepFieldValue<{ name: string; items: { qty: number }[] }, 'items.qty'> → number
+ */
+export type DeepFieldValue<T, K extends string> = K extends keyof T
+  ? T[K]
+  : K extends `${infer Head}.${infer Tail}`
+    ? Head extends keyof T
+      ? T[Head] extends (infer Item)[]
+        ? DeepFieldValue<NonNullable<Item>, Tail>
+        : DeepFieldValue<NonNullable<T[Head]>, Tail>
+      : unknown
+    : unknown
 
 // ---------------------------------------------------------------------------
 // FieldType
@@ -90,13 +112,54 @@ export type FieldCondition<TValues = Record<string, unknown>> = (
 ) => boolean
 
 // ---------------------------------------------------------------------------
+// FormMethods / FieldOnChangeFormMethods / AutoFormHandle (shared interface)
+// ---------------------------------------------------------------------------
+
+/**
+ * All programmatic form control methods, shared by both the field `onChange`
+ * callback and the imperative ref handle.
+ *
+ * @template TSchema - The Zod object schema that defines the form shape.
+ */
+export type FormMethods<TValues extends FieldValues = FieldValues> = {
+  /** Set a single field value programmatically */
+  setValue: <K extends FieldPath<TValues>>(
+    name: K,
+    value: FieldPathValue<TValues, K>,
+  ) => void
+  /** Set multiple field values at once */
+  setValues: (values: Partial<TValues>) => void
+  /** Get the current form values */
+  getValues: () => TValues
+  /** Reset a single field to its default value */
+  resetField: (name: FieldPath<TValues>) => void
+  /** Reset the entire form, optionally to new values */
+  reset: (values?: Partial<TValues>) => void
+  /** Set a validation error on a specific field */
+  setError: (name: FieldPath<TValues>, message: string) => void
+  /** Set validation errors on multiple fields at once */
+  setErrors: (errors: Partial<Record<FieldPath<TValues>, string>>) => void
+  /** Clear validation errors (all fields, or specific ones) */
+  clearErrors: (names?: FieldPath<TValues> | FieldPath<TValues>[]) => void
+  /** Programmatically trigger form submission */
+  submit: () => void
+  /** Focus a specific field by name (dot-notated for nested fields) */
+  focus: (fieldName: FieldPath<TValues>) => void
+  /** Get the current value of a field (or all values if no name provided) */
+  watch: {
+    (): TValues
+    <K extends FieldPath<TValues>>(name: K): FieldPathValue<TValues, K>
+  }
+}
+
+// ---------------------------------------------------------------------------
 // FieldDependencyResult
 // ---------------------------------------------------------------------------
 
 /**
- * The object returned by a field's `depend` function. Each key is optional —
- * only the properties you return will be applied; omitted keys leave the
- * current field state unchanged.
+ * Dynamic field property overrides passed to `ctx.setFieldMeta()` inside a
+ * UniForm onChange handler. Each key is optional — only the properties you
+ * provide will be applied; omitted keys leave the current field state unchanged.
  */
 export type FieldDependencyResult = {
   /** Override the available options for select fields */
@@ -111,10 +174,6 @@ export type FieldDependencyResult = {
   placeholder?: string
   /** Override the description text */
   description?: string
-  /** Set the field's value programmatically. Only return this when the value
-   *  should be derived (e.g. auto-reset a cascade field). Omit (or return
-   *  `undefined`) to leave the current value untouched. */
-  value?: unknown
 }
 
 // ---------------------------------------------------------------------------
@@ -149,8 +208,6 @@ export type FieldMetaBase = {
   disabled?: boolean
   /** Conditionally show or hide the field based on the current form values. */
   condition?: FieldCondition
-  /** Derive options, visibility, disabled state, or metadata from other field values */
-  depend?: (values: Record<string, unknown>) => FieldDependencyResult
   /**
    * Override the component used to render this field.
    *
@@ -166,6 +223,18 @@ export type FieldMetaBase = {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   component?: string | React.ComponentType<any>
+  /** Called when this field's value changes. Receives the new value and form control methods. */
+  onChange?: (value: unknown, form: FormMethods) => void
+
+  // ---------------------------------------------------------------------------
+  // Array-specific options
+  // ---------------------------------------------------------------------------
+  /** When `true`, rows in an array field can be reordered via move-up/move-down buttons. */
+  movable?: boolean
+  /** When `true`, rows in an array field can be duplicated. */
+  duplicable?: boolean
+  /** When `true`, rows in an array field can be individually collapsed. */
+  collapsible?: boolean
 }
 
 /**
@@ -173,7 +242,9 @@ export type FieldMetaBase = {
  * extra keys for custom component use-cases. Extends `FieldMetaBase` with
  * all the standard metadata properties.
  */
-export type FieldMeta = FieldMetaBase & { [key: string]: unknown }
+export type FieldMeta = FieldMetaBase & {
+  [key: string]: unknown
+}
 
 // ---------------------------------------------------------------------------
 // FieldConfig
@@ -425,14 +496,17 @@ export type FormClassNames = {
 
 /**
  * A per-field override entry used in the AutoFormProps `fields` prop.
- * Unlike the base FieldMeta, the `depend` callback here is typed to the
- * specific schema's inferred value type, providing full IDE autocomplete.
+ * The `onChange` callback is typed to the specific schema's inferred value
+ * type, providing full IDE autocomplete.
  */
-export type FieldOverride<TValues = Record<string, unknown>> = Omit<
-  Partial<FieldMetaBase>,
-  'depend'
-> & {
-  depend?: (values: TValues) => FieldDependencyResult
+export type FieldOverride<
+  TSchema extends z.$ZodObject = z.$ZodObject,
+  TValue = unknown,
+> = Partial<FieldMetaBase> & {
+  /** Conditionally show or hide the field based on the current form values. */
+  condition?: FieldCondition<z.infer<TSchema>>
+  /** Called when this field's value changes. Receives the new value and form control methods. */
+  onChange?: (value: TValue, form: FormMethods<z.infer<TSchema>>) => void
   [key: string]: unknown
 }
 
@@ -508,24 +582,10 @@ export type PersistStorage = {
  * The imperative handle exposed via `ref` on `<AutoForm>`. Provides methods
  * to programmatically control the form from a parent component.
  *
- * @template TValues - The inferred shape of the form's Zod schema.
+ * @template TSchema - The Zod object schema that defines the form shape.
  */
-export type AutoFormHandle<TValues = Record<string, unknown>> = {
-  /** Reset the form to defaultValues (or provided values) */
-  reset: (values?: Partial<TValues>) => void
-  /** Programmatically trigger form submission */
-  submit: () => void
-  /** Set one or more field values */
-  setValues: (values: Partial<TValues>) => void
-  /** Get the current form values */
-  getValues: () => TValues
-  /** Set errors on specific fields */
-  setErrors: (errors: Record<string, string>) => void
-  /** Clear all errors, or errors on specific fields */
-  clearErrors: (fieldNames?: string[]) => void
-  /** Focus a specific field by name (dot-notated for nested fields) */
-  focus: (fieldName: string) => void
-}
+export type AutoFormHandle<TSchema extends z.$ZodObject = z.$ZodObject> =
+  FormMethods<z.infer<TSchema>>
 
 // ---------------------------------------------------------------------------
 // AutoFormConfig (factory)
@@ -565,9 +625,9 @@ export type AutoFormConfig = {
  *
  * @template TSchema - The Zod object schema that defines the form shape.
  */
-export type AutoFormProps<TSchema extends z.ZodObject<z.ZodRawShape>> = {
-  /** The Zod schema used to introspect fields and validate values. */
-  schema: TSchema
+export type AutoFormProps<TSchema extends z.$ZodObject> = {
+  /** A UniForm instance carrying the schema and typed onChange handlers. */
+  form: { readonly schema: TSchema }
   /** Called with the validated form values when the form is submitted successfully. */
   onSubmit: (values: z.infer<TSchema>) => void | Promise<void>
   /** Initial values to pre-populate the form with. */
@@ -575,9 +635,12 @@ export type AutoFormProps<TSchema extends z.ZodObject<z.ZodRawShape>> = {
   /** Component registry overrides for this form instance. */
   components?: ComponentRegistry
   /** Per-field UI metadata overrides (label, placeholder, options, etc.). */
-  fields?: Partial<
-    Record<DeepKeys<z.infer<TSchema>>, FieldOverride<z.infer<TSchema>>>
-  >
+  fields?: {
+    [K in DeepKeys<z.infer<TSchema>>]?: FieldOverride<
+      TSchema,
+      DeepFieldValue<z.infer<TSchema>, K>
+    >
+  }
   /** Field wrapper component override for this form instance. */
   fieldWrapper?: React.ComponentType<FieldWrapperProps>
   /** Layout slot overrides for this form instance. */

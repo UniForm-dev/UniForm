@@ -1,16 +1,24 @@
 import { useState } from 'react'
 import * as z from 'zod/v4'
-import { AutoForm } from '@uniform/core'
+import { AutoForm, createForm } from '@uniform/core'
 import { SubmittedData } from './shared'
 
 const profileSchema = z.object({
-  username: z.string().min(3, 'Username must be at least 3 characters'),
-  street: z.string(),
-  city: z.string(),
-  zip: z.string().min(5, 'ZIP must be 5 digits'),
-  newsletter: z.boolean(),
-  notifications: z.boolean(),
+  username: z
+    .string()
+    .min(3, 'Username must be at least 3 characters')
+    .meta({ section: 'Account', order: 1 }),
+  street: z.string().meta({ section: 'Address', order: 2 }),
+  city: z.string().meta({ section: 'Address', order: 3 }),
+  zip: z
+    .string()
+    .min(5, 'ZIP must be 5 digits')
+    .meta({ section: 'Address', order: 4 }),
+  newsletter: z.boolean().meta({ section: 'Preferences', order: 5 }),
+  notifications: z.boolean().meta({ section: 'Preferences', order: 6 }),
 })
+
+const profileForm = createForm(profileSchema)
 
 export default function Example02() {
   const [data, setData] = useState<unknown>(null)
@@ -22,16 +30,8 @@ export default function Example02() {
         renders inside a <code>layout.sectionWrapper</code>.
       </p>
       <AutoForm
-        schema={profileSchema}
+        form={profileForm}
         defaultValues={{ newsletter: false, notifications: true }}
-        fields={{
-          username: { section: 'Account', order: 1 },
-          street: { section: 'Address', order: 2 },
-          city: { section: 'Address', order: 3 },
-          zip: { section: 'Address', order: 4 },
-          newsletter: { section: 'Preferences', order: 5 },
-          notifications: { section: 'Preferences', order: 6 },
-        }}
         onSubmit={(values) => setData(values)}
       />
       <SubmittedData data={data} />
