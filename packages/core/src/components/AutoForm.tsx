@@ -389,7 +389,10 @@ export function AutoForm<TSchema extends z.$ZodObject>(
               </SectionWrapper>
             )
           })}
-          <SubmitButton isSubmitting={formState.isSubmitting} />
+          <SubmitButton
+            isSubmitting={formState.isSubmitting}
+            label={labels.submit ?? 'Submit'}
+          />
         </FormWrapper>
       </form>
     </AutoFormContextProvider>
