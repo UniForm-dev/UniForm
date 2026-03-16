@@ -315,12 +315,20 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   const visibleFields = useConditionalFields(fieldsWithDynamic, control)
   const sections = useSectionGrouping(visibleFields)
 
-  const resolvedLayout = {
-    formWrapper: layout?.formWrapper ?? DefaultFormWrapper,
-    sectionWrapper: layout?.sectionWrapper ?? DefaultSectionWrapper,
-    submitButton: layout?.submitButton ?? DefaultSubmitButton,
-    arrayRowLayout: layout?.arrayRowLayout ?? DefaultArrayRowLayout,
-  }
+  const resolvedLayout = React.useMemo(
+    () => ({
+      formWrapper: layout?.formWrapper ?? DefaultFormWrapper,
+      sectionWrapper: layout?.sectionWrapper ?? DefaultSectionWrapper,
+      submitButton: layout?.submitButton ?? DefaultSubmitButton,
+      arrayRowLayout: layout?.arrayRowLayout ?? DefaultArrayRowLayout,
+    }),
+    [
+      layout?.formWrapper,
+      layout?.sectionWrapper,
+      layout?.submitButton,
+      layout?.arrayRowLayout,
+    ],
+  )
 
   const resolvedFieldWrapper = fieldWrapper ?? DefaultFieldWrapper
 
@@ -328,21 +336,35 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   const SectionWrapper = resolvedLayout.sectionWrapper
   const SubmitButton = resolvedLayout.submitButton
 
+  const contextValue = React.useMemo(
+    () => ({
+      registry,
+      fieldOverrides: fieldOverridesProp,
+      fieldWrapper: resolvedFieldWrapper,
+      layout: resolvedLayout,
+      classNames,
+      disabled,
+      coercions,
+      messages,
+      labels,
+      formMethods: formMethods as unknown as FormMethods,
+    }),
+    [
+      registry,
+      fieldOverridesProp,
+      resolvedFieldWrapper,
+      resolvedLayout,
+      classNames,
+      disabled,
+      coercions,
+      messages,
+      labels,
+      formMethods,
+    ],
+  )
+
   return (
-    <AutoFormContextProvider
-      value={{
-        registry,
-        fieldOverrides: fieldOverridesProp,
-        fieldWrapper: resolvedFieldWrapper,
-        layout: resolvedLayout,
-        classNames,
-        disabled,
-        coercions,
-        messages,
-        labels,
-        formMethods: formMethods as unknown as FormMethods,
-      }}
-    >
+    <AutoFormContextProvider value={contextValue}>
       <form
         noValidate
         className={classNames.form}
