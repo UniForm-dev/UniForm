@@ -1339,7 +1339,99 @@ describe('AutoForm', () => {
   })
 
   // ---------------------------------------------------------------------------
-  // 56. Section grouping renders sections and submits all field values
+  // 56. Conditional field resets value when condition becomes false
+  // ---------------------------------------------------------------------------
+
+  it('56. resets a conditional field value when its condition becomes false', async () => {
+    const schema = z.object({
+      type: z.enum(['personal', 'business']),
+      companyName: z.string().optional(),
+    })
+    const { user } = setup(
+      <AutoForm
+        form={new UniForm(schema)}
+        onSubmit={vi.fn()}
+        fields={{
+          companyName: {
+            condition: (values: Record<string, unknown>) =>
+              values['type'] === 'business',
+          },
+        }}
+      />,
+    )
+
+    const select = screen.getByRole('combobox')
+
+    // Show the conditional field
+    await user.selectOptions(select, 'business')
+    await waitFor(() =>
+      expect(screen.getByLabelText(/company name/i)).toBeInTheDocument(),
+    )
+
+    // Type a value
+    await user.type(screen.getByLabelText(/company name/i), 'Acme Corp')
+    expect(screen.getByLabelText(/company name/i)).toHaveValue('Acme Corp')
+
+    // Hide the field by switching back
+    await user.selectOptions(select, 'personal')
+    await waitFor(() =>
+      expect(screen.queryByLabelText(/company name/i)).not.toBeInTheDocument(),
+    )
+
+    // Show again — value should be reset to default (empty)
+    await user.selectOptions(select, 'business')
+    await waitFor(() =>
+      expect(screen.getByLabelText(/company name/i)).toHaveValue(''),
+    )
+  })
+
+  // ---------------------------------------------------------------------------
+  // 57. Conditional field reset does not affect non-conditional fields
+  // ---------------------------------------------------------------------------
+
+  it('57. does not reset non-conditional fields when a conditional field is hidden', async () => {
+    const schema = z.object({
+      type: z.enum(['personal', 'business']),
+      name: z.string(),
+      companyName: z.string().optional(),
+    })
+    const onSubmit = vi.fn()
+    const { user } = setup(
+      <AutoForm
+        form={new UniForm(schema)}
+        onSubmit={onSubmit}
+        fields={{
+          companyName: {
+            condition: (values: Record<string, unknown>) =>
+              values['type'] === 'business',
+          },
+        }}
+      />,
+    )
+
+    // Fill the always-visible field
+    await user.type(screen.getByLabelText(/^name/i), 'Alice')
+
+    // Show and fill the conditional field
+    const select = screen.getByRole('combobox')
+    await user.selectOptions(select, 'business')
+    await waitFor(() =>
+      expect(screen.getByLabelText(/company name/i)).toBeInTheDocument(),
+    )
+    await user.type(screen.getByLabelText(/company name/i), 'Acme')
+
+    // Hide the conditional field
+    await user.selectOptions(select, 'personal')
+    await waitFor(() =>
+      expect(screen.queryByLabelText(/company name/i)).not.toBeInTheDocument(),
+    )
+
+    // The non-conditional field should still have its value
+    expect(screen.getByLabelText(/^name/i)).toHaveValue('Alice')
+  })
+
+  // ---------------------------------------------------------------------------
+  // 58. Section grouping renders sections and submits all field values
   // ---------------------------------------------------------------------------
 
   it('56. section grouping renders sections and submits all values', async () => {
