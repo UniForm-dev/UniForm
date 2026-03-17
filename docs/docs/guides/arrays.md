@@ -29,44 +29,41 @@ By default each row gets:
 | Remove              | Removes that row from the array |
 | Move Up / Move Down | Reorders rows                   |
 
-You can add **Duplicate** by setting `arrayRowLayout` in `layout`:
+Enable **Duplicate** and **Collapse** per-row via the `fields` prop:
 
 ```tsx
-const MyRowLayout = ({
-  children,
-  onRemove,
-  onDuplicate,
-  canMoveUp,
-  canMoveDown,
-  onMoveUp,
-  onMoveDown,
-}) => (
+<AutoForm
+  fields={{
+    members: { duplicable: true, collapsible: true },
+  }}
+  ...
+/>
+```
+
+You can also replace the entire row layout via `layout.arrayRowLayout`. The component receives `children` (the row's fields) and a `buttons` object containing pre-rendered button nodes — place them wherever you like:
+
+```tsx
+const MyRowLayout = ({ children, buttons, index }) => (
   <div className='array-row'>
     {children}
     <div className='row-controls'>
-      <button type='button' onClick={onMoveUp} disabled={!canMoveUp}>
-        ↑
-      </button>
-      <button type='button' onClick={onMoveDown} disabled={!canMoveDown}>
-        ↓
-      </button>
-      <button type='button' onClick={onDuplicate}>
-        ⊕ Duplicate
-      </button>
-      <button type='button' onClick={onRemove}>
-        ✕ Remove
-      </button>
+      {buttons.moveUp}
+      {buttons.moveDown}
+      {buttons.duplicate}
+      {buttons.remove}
     </div>
   </div>
 )
 ```
+
+See [`ArrayRowLayoutProps`](/docs/api/types#arrayrowlayoutprops) for the full type.
 
 ## Labels
 
 Override the Add / Remove button labels via the `labels` prop for i18n:
 
 ```tsx
-<AutoForm labels={{ addItem: '+ Add member', removeItem: 'Remove' }} ... />
+<AutoForm labels={{ arrayAdd: '+ Add member', arrayRemove: 'Remove' }} ... />
 ```
 
 ## Minimum / maximum items
@@ -97,16 +94,7 @@ const teamSchema = z.object({
 
 const teamForm = createForm(teamSchema)
 
-const CompactRowLayout = ({
-  children,
-  onRemove,
-  onDuplicate,
-  canMoveUp,
-  canMoveDown,
-  onMoveUp,
-  onMoveDown,
-  index,
-}) => (
+const CompactRowLayout = ({ children, buttons, index }) => (
   <div
     style={{
       border: '1px solid #e5e7eb',
@@ -125,44 +113,10 @@ const CompactRowLayout = ({
         justifyContent: 'flex-end',
       }}
     >
-      <button
-        type='button'
-        onClick={onMoveUp}
-        disabled={!canMoveUp}
-        style={{
-          padding: '2px 8px',
-          cursor: canMoveUp ? 'pointer' : 'default',
-          opacity: canMoveUp ? 1 : 0.4,
-        }}
-      >
-        ↑
-      </button>
-      <button
-        type='button'
-        onClick={onMoveDown}
-        disabled={!canMoveDown}
-        style={{
-          padding: '2px 8px',
-          cursor: canMoveDown ? 'pointer' : 'default',
-          opacity: canMoveDown ? 1 : 0.4,
-        }}
-      >
-        ↓
-      </button>
-      <button
-        type='button'
-        onClick={onDuplicate}
-        style={{ padding: '2px 8px', color: '#4F46E5' }}
-      >
-        ⊕ Clone
-      </button>
-      <button
-        type='button'
-        onClick={onRemove}
-        style={{ padding: '2px 8px', color: '#dc2626' }}
-      >
-        ✕ Remove
-      </button>
+      {buttons.moveUp}
+      {buttons.moveDown}
+      {buttons.duplicate}
+      {buttons.remove}
     </div>
   </div>
 )
@@ -176,10 +130,10 @@ function App() {
         defaultValues={{ members: [{ name: '', email: '', role: 'member' }] }}
         fields={{
           teamName: { label: 'Team Name' },
-          members: { label: 'Team Members' },
+          members: { label: 'Team Members', duplicable: true },
         }}
         layout={{ arrayRowLayout: CompactRowLayout }}
-        labels={{ addItem: '+ Add member', submit: 'Create Team' }}
+        labels={{ arrayAdd: '+ Add member', submit: 'Create Team' }}
         onSubmit={(v) => setResult(v)}
       />
       {result && (

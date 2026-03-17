@@ -12,17 +12,16 @@ UniForm ships with `defaultRegistry` — a minimal set of field components that 
 
 The registry is an object that maps a **type key** → a **React component**. The built-in keys are:
 
-| Key       | Used for                             |
-| --------- | ------------------------------------ |
-| `string`  | `z.string()` fields                  |
-| `number`  | `z.number()` fields                  |
-| `boolean` | `z.boolean()` fields                 |
-| `date`    | `z.date()` fields                    |
-| `enum`    | `z.enum()` / `z.nativeEnum()` fields |
-| `array`   | `z.array()` fields                   |
-| `object`  | `z.object()` nested fields           |
+| Key        | Used for                             |
+| ---------- | ------------------------------------ |
+| `string`   | `z.string()` fields                  |
+| `number`   | `z.number()` fields                  |
+| `boolean`  | `z.boolean()` fields                 |
+| `date`     | `z.date()` fields                    |
+| `select`   | `z.enum()` / `z.nativeEnum()` fields |
+| `textarea` | opt-in via `component: 'textarea'`   |
 
-You can add your own keys (e.g. `"textarea"`, `"slider"`, `"rating"`) and reference them via `fields={{ myField: { component: 'rating' } }}`.
+You can add your own keys (e.g. `"slider"`, `"rating"`) and reference them via `fields={{ myField: { component: 'rating' } }}`.
 
 ## The resolution chain
 

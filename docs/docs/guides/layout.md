@@ -23,8 +23,8 @@ Pass a `layout` object to `<AutoForm>` (or `createAutoForm`) to override any slo
 ### Slot prop types
 
 ```ts
-// formWrapper
-type FormWrapperProps = { children: React.ReactNode; onSubmit: () => void }
+// formWrapper — receives only children; the <form> element is managed by AutoForm
+type FormWrapperProps = { children: React.ReactNode }
 
 // sectionWrapper
 type SectionWrapperProps = { title: string; children: React.ReactNode }
@@ -33,19 +33,20 @@ type SectionWrapperProps = { title: string; children: React.ReactNode }
 type SubmitButtonProps = {
   isSubmitting: boolean
   label: string
-  disabled?: boolean
 }
 
-// arrayRowLayout
+// arrayRowLayout — buttons are pre-rendered nodes, not callbacks
 type ArrayRowLayoutProps = {
   children: React.ReactNode
-  onRemove: () => void
-  onMoveUp?: () => void
-  onMoveDown?: () => void
-  onDuplicate?: () => void
-  canMoveUp: boolean
-  canMoveDown: boolean
-  index: number
+  buttons: {
+    moveUp: React.ReactNode | null // null when already first row
+    moveDown: React.ReactNode | null // null when already last row
+    duplicate: React.ReactNode | null // null when at maxItems
+    remove: React.ReactNode
+    collapse: React.ReactNode | null // null when collapsible is disabled
+  }
+  index: number // zero-based row index
+  rowCount: number // total number of rows
 }
 ```
 
@@ -68,30 +69,14 @@ Add CSS classes to structural elements without replacing the whole component:
 />
 ```
 
-## CSS custom properties
-
-The default components expose these CSS custom properties so you can theme without creating custom components:
-
-```css
-:root {
-  --uniform-input-border: #d1d5db;
-  --uniform-input-radius: 6px;
-  --uniform-input-focus: #4f46e5;
-  --uniform-button-bg: #4f46e5;
-  --uniform-button-color: #fff;
-  --uniform-error-color: #dc2626;
-}
-```
-
 ## Live Example
 
 A card-style form wrapper with a custom submit button:
 
 ```jsx live noInline
-// Custom card form wrapper
-const CardForm = ({ children, onSubmit }) => (
-  <form
-    onSubmit={onSubmit}
+// Custom card form wrapper — receives only children; AutoForm manages the <form> element
+const CardForm = ({ children }) => (
+  <div
     style={{
       background: '#fff',
       border: '1px solid #e5e7eb',
@@ -102,7 +87,7 @@ const CardForm = ({ children, onSubmit }) => (
     }}
   >
     {children}
-  </form>
+  </div>
 )
 
 // Custom section with accent bar
@@ -131,10 +116,10 @@ const AccentSection = ({ title, children }) => (
 )
 
 // Gradient submit button
-const GradientButton = ({ isSubmitting, label, disabled }) => (
+const GradientButton = ({ isSubmitting, label }) => (
   <button
     type='submit'
-    disabled={disabled || isSubmitting}
+    disabled={isSubmitting}
     style={{
       background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
       color: '#fff',
@@ -142,8 +127,8 @@ const GradientButton = ({ isSubmitting, label, disabled }) => (
       borderRadius: 8,
       padding: '10px 24px',
       fontWeight: 600,
-      cursor: disabled || isSubmitting ? 'not-allowed' : 'pointer',
-      opacity: disabled || isSubmitting ? 0.6 : 1,
+      cursor: isSubmitting ? 'not-allowed' : 'pointer',
+      opacity: isSubmitting ? 0.6 : 1,
       width: '100%',
     }}
   >
