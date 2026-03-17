@@ -9,6 +9,7 @@ description: A step-by-step tutorial that takes you from a blank file to a worki
 In this tutorial you will build a user registration form step by step. By the end you will have a fully working form with:
 
 - Schema-driven field rendering
+- Labels and placeholders embedded in the schema
 - Zod validation with custom error messages
 - A reactive field that shows only when relevant
 - Your own input component replacing the default
@@ -21,19 +22,30 @@ In this tutorial you will build a user registration form step by step. By the en
 
 Start with a Zod schema that describes your form's data. UniForm introspects this schema to decide which fields to render and how to validate them.
 
+You can embed labels, placeholders, and descriptions directly on each field using `.meta()` — keeping all field presentation co-located with the field definition.
+
 ```ts
 import { z } from 'zod/v4'
 
 const registrationSchema = z.object({
-  username: z.string().min(3, 'Username must be at least 3 characters'),
-  email: z.string().email('Enter a valid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  role: z.enum(['user', 'moderator', 'admin']),
-  agreeToTerms: z.boolean(),
+  username: z
+    .string()
+    .min(3, 'Username must be at least 3 characters')
+    .meta({ label: 'Username', placeholder: 'e.g. jane_doe' }),
+  email: z
+    .string()
+    .email('Enter a valid email address')
+    .meta({ label: 'Email address' }),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .meta({ label: 'Password', description: 'Minimum 8 characters' }),
+  role: z.enum(['user', 'moderator', 'admin']).meta({ label: 'Account type' }),
+  agreeToTerms: z.boolean().meta({ label: 'I agree to the Terms of Service' }),
 })
 ```
 
-The schema is the single source of truth. UniForm derives field types, required/optional status, and validation rules from it — you do not need to repeat any of this in the component.
+The schema is the single source of truth. UniForm derives field types, required/optional status, validation rules, labels, and placeholders from it — you do not need to repeat any of this in the component.
 
 ---
 
@@ -62,6 +74,7 @@ function RegistrationPage() {
   return (
     <AutoForm
       form={registrationForm}
+      defaultValues={{ role: 'user', agreeToTerms: false }}
       onSubmit={(values) => {
         // values is fully typed: { username, email, password, role, agreeToTerms }
         console.log(values)
@@ -71,40 +84,18 @@ function RegistrationPage() {
 }
 ```
 
-At this point the form renders five fields — a text input for `username`, `email`, and `password`; a select for `role`; and a checkbox for `agreeToTerms`. Submitting with invalid data shows Zod's default error messages.
+The labels and placeholders you set in `.meta()` are picked up automatically. `defaultValues` pre-fills specific fields without touching the schema.
 
 ---
 
-## Step 4 — Add labels and default values
-
-The `fields` prop lets you customise how each field is presented without touching the schema.
-
-```tsx
-<AutoForm
-  form={registrationForm}
-  defaultValues={{ role: 'user', agreeToTerms: false }}
-  fields={{
-    username: { label: 'Username', placeholder: 'e.g. jane_doe' },
-    email: { label: 'Email address' },
-    password: { label: 'Password', description: 'Minimum 8 characters' },
-    role: { label: 'Account type' },
-    agreeToTerms: { label: 'I agree to the Terms of Service' },
-  }}
-  onSubmit={handleSubmit}
-/>
-```
-
-`defaultValues` pre-fills the form. The `description` on `password` appears as help text below the input.
-
----
-
-## Step 5 — Customise validation messages
+## Step 4 — Customise validation messages
 
 Replace Zod's default English strings with copy that fits your product.
 
 ```tsx
 <AutoForm
   form={registrationForm}
+  defaultValues={{ role: 'user', agreeToTerms: false }}
   messages={{
     required: 'This field is required',
     username: {
@@ -115,7 +106,7 @@ Replace Zod's default English strings with copy that fits your product.
       too_small: 'Password must be at least 8 characters',
     },
   }}
-  ...
+  onSubmit={handleSubmit}
 />
 ```
 
@@ -123,9 +114,19 @@ The `messages` prop supports three levels: a global `required` fallback, a per-f
 
 ---
 
-## Step 6 — Add a conditional field
+## Step 5 — Add a conditional field
 
-Show an extra field only when the user selects a privileged role. Call `setCondition` on the form object — once, at module scope.
+Show an extra field only when the user selects a privileged role. Add the field to the schema with its label in `.meta()`, then call `setCondition` on the form object — once, at module scope.
+
+```ts
+const registrationSchema = z.object({
+  // …existing fields…
+  adminCode: z.string().optional().meta({
+    label: 'Admin access code',
+    description: 'Required for privileged roles',
+  }),
+})
+```
 
 ```ts
 registrationForm.setCondition(
@@ -134,34 +135,26 @@ registrationForm.setCondition(
 )
 ```
 
-Then add the field to the schema and to `fields`:
-
-```ts
-const registrationSchema = z.object({
-  // …existing fields…
-  adminCode: z.string().optional(),
-})
-```
-
-```tsx
-fields={{
-  // …existing fields…
-  adminCode: { label: 'Admin access code', description: 'Required for privileged roles' },
-}}
-```
-
 When the user changes `role` to `admin` or `moderator`, `adminCode` appears. When they switch back to `user`, the field disappears and its value is removed from the submitted object.
 
 ---
 
-## Step 7 — Replace the default input
+## Step 6 — Replace the default input
 
 UniForm's built-in inputs are intentionally minimal. Here is how to swap the `string` type for a styled component from your design system.
 
 ```tsx
 import type { FieldProps } from '@uniform/core'
 
-function MyTextInput({ value, onChange, onBlur, ref, placeholder, error, disabled }: FieldProps) {
+function MyTextInput({
+  value,
+  onChange,
+  onBlur,
+  ref,
+  placeholder,
+  error,
+  disabled,
+}: FieldProps) {
   return (
     <input
       ref={ref}
@@ -176,7 +169,7 @@ function MyTextInput({ value, onChange, onBlur, ref, placeholder, error, disable
 }
 ```
 
-Register it under the `string` key to replace all text inputs in this form:
+The `placeholder` prop is passed through from the `.meta()` on the schema field — no extra wiring needed. Register the component under the `string` key to replace all text inputs in this form:
 
 ```tsx
 <AutoForm
@@ -194,13 +187,13 @@ Or register it in a `createAutoForm` factory to apply it across every form in yo
 You now have a form that:
 
 - Derives fields, types, and validation from a Zod schema
-- Renders with your own labels, descriptions, and default values
+- Carries labels, placeholders, and descriptions in the schema via `.meta()`
 - Shows custom error messages
 - Conditionally reveals a field based on another field's value
 - Uses a custom input component
 
 ### Next steps
 
-- Read [Field Overrides](./guides/field-overrides) to learn about column span, sections, ordering, and more
+- Read [Field Overrides](./guides/field-overrides) to learn about overriding `.meta()` values at the call site, and about column span, sections, and ordering
 - Read [Layout & Styling](./guides/layout) to replace the form wrapper and submit button
 - Read [How UniForm Works](./concepts) for a deeper explanation of the rendering pipeline

@@ -33,7 +33,7 @@ Then in any feature:
 | `classNames`   | `FormClassNames`                         | Default CSS class names                                                                           |
 | `disabled`     | `boolean`                                | When `true`, all fields in every form instance are disabled by default                            |
 | `messages`     | `ValidationMessages`                     | Default validation messages                                                                       |
-| `coercions`    | `CoercionMap`                            | Default per-field coercions                                                                        |
+| `coercions`    | `CoercionMap`                            | Default per-field coercions                                                                       |
 | `labels`       | `FormLabels`                             | Default UI labels (submit, arrayAdd, arrayRemove, …)                                              |
 
 ### Merge behaviour

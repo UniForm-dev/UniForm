@@ -85,7 +85,10 @@ type UniForm<TSchema extends z.$ZodObject> = {
   schema: TSchema
   setOnChange: (
     field: DeepKeys<z.infer<TSchema>>,
-    handler: (value: FieldValue, ctx: UniFormContext<TSchema>) => void | Promise<void>,
+    handler: (
+      value: FieldValue,
+      ctx: UniFormContext<TSchema>,
+    ) => void | Promise<void>,
   ) => UniForm<TSchema>
   setCondition: (
     field: DeepKeys<z.infer<TSchema>>,
@@ -104,7 +107,10 @@ Passed as the second argument to every `setOnChange` handler. Extends all [`Form
 type UniFormContext<TSchema extends z.$ZodObject> = FormMethods<
   z.infer<TSchema>
 > & {
-  setFieldMeta: (field: DeepKeys<z.infer<TSchema>>, meta: Partial<FieldDependencyResult>) => void
+  setFieldMeta: (
+    field: DeepKeys<z.infer<TSchema>>,
+    meta: Partial<FieldDependencyResult>,
+  ) => void
 }
 ```
 
@@ -125,18 +131,18 @@ type FieldOverride = {
   description?: string
   placeholder?: string
   order?: number
-  span?: number      // 1–12 column span in 12-col grid
-  section?: string   // Group into a named section
-  hidden?: boolean   // Hard-hide (never renders, never validates)
+  span?: number // 1–12 column span in 12-col grid
+  section?: string // Group into a named section
+  hidden?: boolean // Hard-hide (never renders, never validates)
   disabled?: boolean
-  component?: string | React.ComponentType<FieldProps>  // Registry key or inline component
+  component?: string | React.ComponentType<FieldProps> // Registry key or inline component
   options?: Array<{ label: string; value: string | number }>
-  condition?: (values: z.infer<TSchema>) => boolean  // Inline conditional visibility
+  condition?: (values: z.infer<TSchema>) => boolean // Inline conditional visibility
   onChange?: (value: FieldValue, form: FormMethods) => void | Promise<void>
   // Array-field specific:
-  movable?: boolean      // Enable move-up/move-down row controls
-  duplicable?: boolean   // Enable duplicate row button
-  collapsible?: boolean  // Enable collapse/expand per row
+  movable?: boolean // Enable move-up/move-down row controls
+  duplicable?: boolean // Enable duplicate row button
+  collapsible?: boolean // Enable collapse/expand per row
 }
 ```
 
@@ -149,7 +155,10 @@ Slots for replacing structural chrome components.
 ```ts
 type LayoutSlots = {
   formWrapper?: React.ComponentType<{ children: React.ReactNode }>
-  sectionWrapper?: React.ComponentType<{ title: string; children: React.ReactNode }>
+  sectionWrapper?: React.ComponentType<{
+    title: string
+    children: React.ReactNode
+  }>
   submitButton?: React.ComponentType<{ isSubmitting: boolean; label: string }>
   arrayRowLayout?: React.ComponentType<ArrayRowLayoutProps>
   loadingFallback?: React.ReactNode
@@ -170,14 +179,14 @@ Props passed to custom `arrayRowLayout` components. Buttons are provided as pre-
 type ArrayRowLayoutProps = {
   children: React.ReactNode
   buttons: {
-    moveUp: React.ReactNode | null    // null when already first row
-    moveDown: React.ReactNode | null  // null when already last row
+    moveUp: React.ReactNode | null // null when already first row
+    moveDown: React.ReactNode | null // null when already last row
     duplicate: React.ReactNode | null // null when at maxItems
     remove: React.ReactNode
-    collapse: React.ReactNode | null  // null when collapsible is disabled
+    collapse: React.ReactNode | null // null when collapsible is disabled
   }
-  index: number     // zero-based row index
-  rowCount: number  // total number of rows
+  index: number // zero-based row index
+  rowCount: number // total number of rows
 }
 ```
 
@@ -193,7 +202,7 @@ type ComponentRegistry = {
   number?: React.ComponentType<FieldProps>
   boolean?: React.ComponentType<FieldProps>
   date?: React.ComponentType<FieldProps>
-  select?: React.ComponentType<FieldProps>   // z.enum() / z.nativeEnum() fields
+  select?: React.ComponentType<FieldProps> // z.enum() / z.nativeEnum() fields
   textarea?: React.ComponentType<FieldProps> // opt-in via component: 'textarea'
   [key: string]: React.ComponentType<FieldProps> | undefined
 }
@@ -223,7 +232,7 @@ type FieldProps = {
   required: boolean
   disabled?: boolean
   options?: SelectOption[]
-  meta: FieldMeta  // full field metadata, including any custom keys
+  meta: FieldMeta // full field metadata, including any custom keys
 }
 ```
 
@@ -239,8 +248,8 @@ type FieldWrapperProps = {
   field: FieldConfig
   error?: string
   span?: number
-  index?: number  // zero-based render index; also set as CSS var --field-index
-  depth?: number  // nesting depth (0 = top-level); also set as CSS var --field-depth
+  index?: number // zero-based render index; also set as CSS var --field-index
+  depth?: number // nesting depth (0 = top-level); also set as CSS var --field-depth
 }
 ```
 
@@ -316,13 +325,13 @@ Override hard-coded UI strings.
 ```ts
 type FormLabels = {
   submit?: string
-  arrayAdd?: string       // "Add" button label
-  arrayRemove?: string    // "Remove" button label
-  arrayMoveUp?: string    // "↑" button label
-  arrayMoveDown?: string  // "↓" button label
+  arrayAdd?: string // "Add" button label
+  arrayRemove?: string // "Remove" button label
+  arrayMoveUp?: string // "↑" button label
+  arrayMoveDown?: string // "↓" button label
   arrayDuplicate?: string // "Duplicate" button label
-  arrayCollapse?: string  // collapse toggle label (when expanded)
-  arrayExpand?: string    // expand toggle label (when collapsed)
+  arrayCollapse?: string // collapse toggle label (when expanded)
+  arrayExpand?: string // expand toggle label (when collapsed)
 }
 ```
 

@@ -14,11 +14,16 @@ npm install @uniform/core react react-hook-form zod
 ```
 
 :::note Zod V4 import path
-UniForm uses Zod V4, which ships under the `zod@^3.25` version range. Import from `'zod/v4'` to get the V4 API surface:
+UniForm requires the Zod V4 API. How you import it depends on which version of the `zod` package you have installed:
 
-```ts
-import { z } from 'zod/v4'
-```
+- **`zod@3.25` or later** — Zod V4 ships inside the existing `zod` package. Import from the sub-path:
+  ```ts
+  import { z } from 'zod/v4'
+  ```
+- **`zod@4.x`** — Import directly from the package root:
+  ```ts
+  import { z } from 'zod'
+  ```
 :::
 
 ## Imports

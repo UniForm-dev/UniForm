@@ -84,14 +84,16 @@
 }
 
 .installSection {
-  padding: 2rem;
+  padding-block: 1rem;
+  padding-inline: 2rem;
   max-width: 700px;
   margin: 0 auto;
   text-align: center;
 }
 
 .liveExampleSection {
-  padding: 2rem;
+  padding-block: 1rem;
+  padding-inline: 2rem;
   max-width: 700px;
   margin: 0 auto 4rem;
 }

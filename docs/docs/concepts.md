@@ -98,10 +98,10 @@ UniForm ships zero CSS and zero styled components. Every structural element — 
 
 The library divides the UI into two layers:
 
-| Layer | How to replace |
-|---|---|
-| **Field components** (inputs, selects, checkboxes) | `components` prop / `createAutoForm` |
-| **Structural chrome** (form wrapper, section wrapper, submit button, array row) | `layout` prop |
+| Layer                                                                           | How to replace                       |
+| ------------------------------------------------------------------------------- | ------------------------------------ |
+| **Field components** (inputs, selects, checkboxes)                              | `components` prop / `createAutoForm` |
+| **Structural chrome** (form wrapper, section wrapper, submit button, array row) | `layout` prop                        |
 
 You can also add CSS classes to every structural element via `classNames` without replacing the components at all. See [Layout & Styling](./guides/layout).
 

@@ -86,7 +86,7 @@ export default function Home(): ReactNode {
         {/* Live example */}
         <section className={styles.liveExampleSection}>
           <Heading as='h2' className={styles.liveExampleTitle}>
-            Live Example
+            Example
           </Heading>
           <p className={styles.liveExampleSubtitle}>
             Define a Zod schema, call <code>createForm</code>, render{' '}
