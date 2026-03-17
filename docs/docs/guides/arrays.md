@@ -102,11 +102,14 @@ const teamForm = createForm(teamSchema)
 const CompactRowLayout = ({ children, buttons, index }) => (
   <div
     style={{
-      border: '1px solid #e5e7eb',
+      border: '1px solid var(--ifm-color-emphasis-300)',
       borderRadius: 8,
       padding: '0.75rem',
       marginBottom: '0.5rem',
-      background: index % 2 === 0 ? '#fafafa' : '#fff',
+      background:
+        index % 2 === 0
+          ? 'var(--ifm-color-emphasis-100)'
+          : 'var(--ifm-background-color)',
     }}
   >
     {children}
@@ -130,13 +133,15 @@ function App() {
   const [result, setResult] = React.useState(null)
   return (
     <div style={{ fontFamily: 'system-ui', maxWidth: 480 }}>
+      <style>{`.ar-dup { color: var(--ifm-color-primary) } .ar-rm { color: var(--ifm-color-danger) }`}</style>
       <AutoForm
         form={teamForm}
         defaultValues={{ members: [{ name: '', email: '', role: 'member' }] }}
         fields={{
           teamName: { label: 'Team Name' },
-          members: { label: 'Team Members', duplicable: true },
+          members: { label: 'Team Members', movable: true, duplicable: true },
         }}
+        classNames={{ arrayDuplicate: 'ar-dup', arrayRemove: 'ar-rm' }}
         layout={{ arrayRowLayout: CompactRowLayout }}
         labels={{ arrayAdd: '+ Add member', submit: 'Create Team' }}
         onSubmit={(v) => setResult(v)}
@@ -145,7 +150,7 @@ function App() {
         <pre
           style={{
             marginTop: '1rem',
-            background: '#f5f5f5',
+            background: 'var(--ifm-color-emphasis-200)',
             padding: '1rem',
             borderRadius: 6,
             fontSize: 12,

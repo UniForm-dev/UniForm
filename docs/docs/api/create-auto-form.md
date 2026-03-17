@@ -50,7 +50,7 @@ const inputStyle = {
   paddingLeft: 8,
   borderTop: 'none',
   borderRight: 'none',
-  borderBottom: '1px solid #ccc',
+  borderBottom: '1px solid var(--ifm-color-emphasis-300)',
   outline: 'none',
   width: '100%',
   fontSize: 14,
@@ -58,7 +58,7 @@ const inputStyle = {
 }
 
 const wrapperStyle = {
-  borderBottom: '1px solid #eee',
+  borderBottom: '1px solid var(--ifm-color-emphasis-200)',
   paddingBottom: 12,
   marginBottom: 12,
 }
@@ -73,7 +73,11 @@ const CustomInput = ({ value, onChange, onBlur, ref, placeholder, error }) => (
       style={inputStyle}
       placeholder={placeholder}
     />
-    {error && <span style={{ color: 'red', fontSize: 12 }}>{error}</span>}
+    {error && (
+      <span style={{ color: 'var(--ifm-color-danger)', fontSize: 12 }}>
+        {error}
+      </span>
+    )}
   </div>
 )
 
@@ -93,7 +97,7 @@ function App() {
   const [saved, setSaved] = React.useState(false)
   return (
     <div style={{ fontFamily: 'system-ui', maxWidth: 380 }}>
-      {saved && <p style={{ color: 'green' }}>Saved!</p>}
+      {saved && <p style={{ color: 'var(--ifm-color-success)' }}>Saved!</p>}
       <BrandedForm
         form={profileForm}
         fields={{

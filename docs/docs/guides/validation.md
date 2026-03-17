@@ -111,21 +111,29 @@ function App() {
   const [result, setResult] = React.useState(null)
   return (
     <div style={{ fontFamily: 'system-ui', maxWidth: 420 }}>
-      <p style={{ fontSize: 13, color: '#6b7280', marginBottom: '1rem' }}>
+      <p
+        style={{
+          fontSize: 13,
+          color: 'var(--ifm-color-emphasis-600)',
+          marginBottom: '1rem',
+        }}
+      >
         Try submitting with invalid values to see custom messages.
       </p>
       <AutoForm
         form={registrationForm}
         messages={{
           required: 'This field cannot be empty',
-          email: "That doesn't look like a valid email",
           username: {
             too_small: 'Username needs at least 3 characters',
             too_big: 'Username cannot exceed 20 characters',
           },
+          email: "That doesn't look like a valid email",
+          website: 'Please enter a full URL (https://…)',
           age: {
-            too_small: 'Must be 13 or older',
-            too_big: 'Must be 120 or younger',
+            too_small: 'You must be at least 13 years old',
+            too_big: 'Age cannot exceed 120',
+            invalid_type: 'Please enter a valid age',
           },
         }}
         fields={{
@@ -139,7 +147,7 @@ function App() {
         <pre
           style={{
             marginTop: '1rem',
-            background: '#f5f5f5',
+            background: 'var(--ifm-color-emphasis-200)',
             padding: '1rem',
             borderRadius: 6,
           }}
