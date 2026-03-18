@@ -1,7 +1,7 @@
 {
   "name": "uniform-monorepo",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "scripts": {
     "dev": "pnpm --filter @uniform-dev/playground dev",
     "build": "pnpm --filter @uniform-dev/core build",
@@ -21,5 +21,8 @@
     "onlyBuiltDependencies": [
       "esbuild"
     ]
+  },
+  "devDependencies": {
+    "semver": "^7.7.4"
   }
 }

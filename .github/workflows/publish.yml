@@ -25,10 +25,6 @@ jobs:
         with:
           version: 9
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
       - run: pnpm install --frozen-lockfile
 
       - name: Build
@@ -38,18 +34,53 @@ jobs:
         run: pnpm test
 
       - name: Version bump
-        working-directory: packages/core
-        run: pnpm version ${{ github.event.inputs.version }} --no-git-tag-version
+        run: |
+          TYPE=${{ github.event.inputs.version }}
+          FILE=packages/core/package.json
+
+          CURRENT=$(node -p "require('./$FILE').version")
+          NEXT=$(pnpm exec semver $CURRENT -i $TYPE)
+
+          echo "Next version: $NEXT"
+
+          node << EOF
+          const fs = require('fs')
+          const path = '$FILE'
+          const pkg = JSON.parse(fs.readFileSync(path, 'utf8'))
+          pkg.version = '$NEXT'
+          fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n')
+          EOF
+
+      - name: Verify Version Change (Debug)
+        run: |
+          echo "New version in packages/core is:"
+          node -p "require('./packages/core/package.json').version"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
 
       - name: Publish
         working-directory: packages/core
-        run: pnpm publish --access public --no-git-checks --provenance
+        run: npm publish --access public --provenance
 
       - name: Push version commit and tag
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "chore: release v$(node -p "require('./packages/core/package.json').version")"
-          git push
-          git push --tags
+
+          # Check if there are any changes to commit
+          if [ -n "$(git status --porcelain)" ]; then
+            git add .
+            git commit -m "chore: release v$(node -p "require('./packages/core/package.json').version")"
+            
+            # Create the tag (your previous script was missing the actual 'git tag' command)
+            VERSION=$(node -p "require('./packages/core/package.json').version")
+            git tag "v$VERSION"
+            
+            git push
+            git push --tags
+          else
+            echo "No changes to commit. Skipping git push."
+          fi
