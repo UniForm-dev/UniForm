@@ -44,9 +44,7 @@ jobs:
 
       - name: Publish
         working-directory: packages/core
-        run: pnpm publish --access public --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm publish --access public --no-git-checks --provenance
 
       - name: Push version commit and tag
         run: |

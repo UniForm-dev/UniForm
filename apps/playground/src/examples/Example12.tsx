@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import * as z from 'zod/v4'
-import { AutoForm, createForm } from '@uniform/core'
+import { AutoForm, createForm } from '@uniform-dev/core'
 import { SubmittedData } from './shared'
 
 const enhancedArraySchema = z.object({
