@@ -468,7 +468,26 @@ const schema = z.object({
 
 Zod still validates the array (`.min(1)` etc.) — only the _render_ is taken over by your component.
 
-#### Option 2 — Named key in the registry
+#### Option 2 — String field as select
+
+A `z.string()` field can be rendered as a select by setting `meta.component: 'select'` together with `meta.options`. UniForm treats it as type `"select"` during introspection:
+
+```ts
+const schema = z.object({
+  role: z.string().meta({
+    component: 'select',
+    options: [
+      { label: 'User', value: 'user' },
+      { label: 'Admin', value: 'admin' },
+      { label: 'Editor', value: 'editor' },
+    ],
+  }),
+})
+```
+
+This is an alternative to `z.enum(...)` — useful when the option list is dynamic or when you need a plain `string` output type rather than a union literal.
+
+#### Option 3 — Named key in the registry
 
 Register a component under a custom string key — either in `createAutoForm` or the `components` prop — then reference it with `meta.component: 'yourKey'`:
 
@@ -652,48 +671,6 @@ const myForm = createForm(schema)
   }}
 />
 ```
-
-### Plain Unions
-
-Plain Zod unions (`z.union([...])` / `.or()`) are rendered using the **first variant** as the field type. This keeps the default form UX simple — no type-switcher UI is generated automatically.
-
-```tsx
-// Renders as a number input (first variant wins)
-const schema = z.object({
-  quantity: z.number().or(z.literal('')),
-  //         ^^^^^^^^ rendered as number
-})
-```
-
-Validation still uses the **full** union schema — Zod accepts any of the listed types on submit.
-
-#### Accessing the full schema in a custom component
-
-Every field component receives `field.schema` — the original Zod schema for that field (after transparent wrappers like `optional`/`default` are stripped). This is a general escape hatch for anything introspection doesn't expose.
-
-For union fields this means you can inspect all variants directly from the Zod schema:
-
-```tsx
-import * as z from 'zod/v4/core'
-import type { FieldProps } from '@uniform-ts/core'
-
-function UnionAwareInput({ field, value, onChange }: FieldProps) {
-  const def = field.schema._zod.def
-
-  if (def.type === 'union') {
-    const variants = (def as z.$ZodUnionDef).options
-    // build a type-switcher, merge options, etc.
-  }
-
-  return <input ... />
-}
-
-const schema = z.object({
-  quantity: z.number().or(z.literal('')).meta({ component: UnionAwareInput }),
-})
-```
-
-`field.schema` is available on every field — not just unions — making it a universal escape hatch for custom validation UI, schema-derived tooltips, or any other use case the library doesn't cover out of the box.
 
 ### Discriminated Unions
 

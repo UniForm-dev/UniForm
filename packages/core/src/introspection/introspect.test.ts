@@ -532,7 +532,56 @@ describe('schema field (escape hatch)', () => {
 })
 
 // ---------------------------------------------------------------------------
-// 19. parseDiscriminatedUnionMeta
+// 19. z.string() with meta.component = 'select' and meta.options
+// ---------------------------------------------------------------------------
+
+describe('z.string() with meta select', () => {
+  it('produces type "select" when meta.component is "select" and options are provided', () => {
+    const schema = z
+      .string()
+      .meta({ component: 'select', options: [{ label: 'User', value: 'user' }, { label: 'Admin', value: 'admin' }] })
+    const result = introspectSchema(schema, 'role')
+    expect(result.type).toBe('select')
+  })
+
+  it('populates field.options from meta.options', () => {
+    const schema = z
+      .string()
+      .meta({ component: 'select', options: [{ label: 'User', value: 'user' }, { label: 'Admin', value: 'admin' }] })
+    const result = introspectSchema(schema, 'role')
+    assert(result.type === 'select')
+    expect(result.options).toHaveLength(2)
+    expect(result.options.map((o) => o.value)).toEqual(['user', 'admin'])
+    expect(result.options.map((o) => o.label)).toEqual(['User', 'Admin'])
+  })
+
+  it('still produces type "string" when meta.component is "select" but no options are provided', () => {
+    const schema = z.string().meta({ component: 'select' })
+    const result = introspectSchema(schema, 'role')
+    expect(result.type).toBe('string')
+  })
+
+  it('still produces type "string" for a plain string with a custom non-select component', () => {
+    const schema = z.string().meta({ component: 'textarea' })
+    const result = introspectSchema(schema, 'bio')
+    expect(result.type).toBe('string')
+  })
+
+  it('works wrapped in optional', () => {
+    const schema = z
+      .string()
+      .meta({ component: 'select', options: [{ label: 'Yes', value: 'yes' }] })
+      .optional()
+    const result = introspectSchema(schema, 'choice')
+    expect(result.type).toBe('select')
+    expect(result.required).toBe(false)
+    assert(result.type === 'select')
+    expect(result.options).toHaveLength(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 20. parseDiscriminatedUnionMeta
 // ---------------------------------------------------------------------------
 
 describe('parseDiscriminatedUnionMeta', () => {
